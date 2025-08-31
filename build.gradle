@@ -24,8 +24,6 @@ dependencies {
     implementation("io.vavr:vavr:0.9.0")
     implementation("org.apache.httpcomponents.client5:httpclient5:5.5")
 
-    compileOnly("io.micronaut:micronaut-http-client")
-
     runtimeOnly("ch.qos.logback:logback-classic")
     runtimeOnly("org.yaml:snakeyaml")
 
