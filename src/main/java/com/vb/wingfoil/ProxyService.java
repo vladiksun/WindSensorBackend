@@ -1,0 +1,66 @@
+package com.vb.wingfoil;
+
+import io.vavr.control.Option;
+import io.vavr.control.Try;
+import jakarta.inject.Singleton;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+@Singleton
+public class ProxyService {
+
+    private final Logger logger = LoggerFactory.getLogger(getClass());
+
+    private Map<String, WindDataProvider> windDataProvidersByName;
+
+    private final CloseableHttpClient httpClient;
+
+    public ProxyService(List<WindDataProvider> windDataProviders) {
+        windDataProvidersByName = windDataProviders.stream()
+                .filter(Objects::nonNull)
+                .filter(p -> p.getName() != null && !p.getName().isBlank())
+                .collect(Collectors.toMap(
+                        WindDataProvider::getName,        // key mapper
+                        Function.identity(),              // value mapper (the provider itself)
+                        (existing, replacement) -> existing, // merge strategy on duplicate keys: keep the first
+                        HashMap::new                // preserves iteration order of the stream
+                ));
+
+        httpClient = HttpClients.createDefault();
+    }
+
+    Try<SensorDTO> requestSensorData(String providerName, String sensorId) {
+        var provider = Option.of(windDataProvidersByName.get(providerName))
+                .getOrElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerName));
+
+        var url = provider.getCallUrl(sensorId);
+
+        var get = new HttpGet(url);
+        get.addHeader("Accept", "application/json");
+
+        return Try.withResources(() -> httpClient.execute(get)).of(response -> {
+            int status = response.getCode();
+            if (status < 200 || status >= 300) {
+                throw new IOException("Upstream call failed with status " + status + " for " + url);
+            }
+            var entity = response.getEntity();
+            
+            var body = entity != null ? EntityUtils.toString(entity, StandardCharsets.UTF_8) : "";
+            return provider.parseResponse(body);
+        });
+    }
+
+}

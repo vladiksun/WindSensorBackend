@@ -20,3 +20,9 @@ endpoints:
   loggers:
     enabled: true
     write-sensitive: false
+
+wind-providers:
+  windy:
+    url: https://api.windyapp.co/apiV9.php?method=getMeteostationDataAndInfo&meteostationID=%s
+
+
