@@ -34,6 +34,8 @@ public class WindyDataProvider extends BaseWindyDataProvider {
         if (data == null) return SensorDTO.empty();
 
         if (data instanceof JsonArray dataArr) {
+            if (dataArr.size() == 0) return SensorDTO.empty();
+
             var lastData = dataArr.get(dataArr.size() - 1);
 
             var windMax = lastData.get("wind_max").getFloatValue();

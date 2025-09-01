@@ -17,8 +17,8 @@ public class WindSenorController {
     @Get("/sensor-data")
     @ExecuteOn(TaskExecutors.VIRTUAL)
     public SensorDTO getSensorData(String provider, String sensorId) {
-        if (provider == null) throw new IllegalArgumentException("provider must not be null");
-        if (sensorId == null || sensorId.isBlank()) throw new IllegalArgumentException("sensorId must not be null or blank");
+        if (provider == null) throw new IllegalArgumentException("provider parameter must not be null");
+        if (sensorId == null || sensorId.isBlank()) throw new IllegalArgumentException("sensorId parameter must not be null or blank");
 
         return proxyService.requestSensorData(provider, sensorId).get();
     }

@@ -1,5 +1,7 @@
 package com.vb.wingfoil;
 
+import io.micronaut.http.HttpHeaders;
+import io.micronaut.http.MediaType;
 import io.vavr.control.Option;
 import io.vavr.control.Try;
 import jakarta.inject.Singleton;
@@ -48,19 +50,19 @@ public class ProxyService {
 
         var url = provider.getCallUrl(sensorId);
 
-        var get = new HttpGet(url);
-        get.addHeader("Accept", "application/json");
+        var request = new HttpGet(url);
+        request.addHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON);
 
-        return Try.withResources(() -> httpClient.execute(get)).of(response -> {
+        return Try.of(() -> httpClient.execute(request, response -> {
             int status = response.getCode();
             if (status < 200 || status >= 300) {
                 throw new IOException("Upstream call failed with status " + status + " for " + url);
             }
             var entity = response.getEntity();
-            
+
             var body = entity != null ? EntityUtils.toString(entity, StandardCharsets.UTF_8) : "";
             return provider.parseResponse(body);
-        });
+        }));
     }
 
 }

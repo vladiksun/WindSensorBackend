@@ -1,6 +1,16 @@
 micronaut:
   server:
     port: 8080
+  ssl:
+    enabled: ${SSL_ENABLED:false}
+    ssl-redirect: true
+    port: 443
+    buildSelfSigned: false
+    key-store:
+      path: ${KEY_STORE_PATH:classpath:keystore.p12}
+      password: ${KEY_STORE_PASSWORD:changeit}
+      type: ${KEY_STORE_TYPE:PKCS12}
+      alias: micronaut
   application:
     name: WindSensor
     default-charset: UTF-8
