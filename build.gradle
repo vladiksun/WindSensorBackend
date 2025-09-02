@@ -30,10 +30,10 @@ dependencies {
     testImplementation("io.micronaut:micronaut-http-client")
 }
 
-
 application {
     mainClass = "com.vb.wingfoil.Application"
 }
+
 java {
     sourceCompatibility = JavaVersion.VERSION_24
     targetCompatibility = JavaVersion.VERSION_24
@@ -63,9 +63,12 @@ micronaut {
     }
 }
 
-
 tasks.named("dockerfileNative") {
     jdkVersion = "24"
+}
+
+tasks.named("dockerfile") {
+    baseImage = "eclipse-temurin:24-jre"
 }
 
 
