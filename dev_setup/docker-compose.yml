@@ -1,0 +1,11 @@
+version: "3.9"
+
+services:
+  windsensorbackend:
+    image: windsensorbackend:latest
+    ports:
+      - "443:443"
+    volumes:
+      - /home/keystore.p12:/home/keystore.p12:ro
+    environment:
+      KEY_STORE_PATH: "file:/home/keystore.p12"
