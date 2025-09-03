@@ -2,6 +2,7 @@ plugins {
     id("io.micronaut.application") version "4.5.4"
     id("com.gradleup.shadow") version "8.3.7"
     id("io.micronaut.aot") version "4.5.4"
+    id("com.google.cloud.tools.jib") version "3.4.5"
 }
 
 version = "0.1"
@@ -67,8 +68,14 @@ tasks.named("dockerfileNative") {
     jdkVersion = "24"
 }
 
-tasks.named("dockerfile") {
-    baseImage = "eclipse-temurin:24-jre"
+jib {
+    from {
+        image = "eclipse-temurin:24-jre"   // or :24-jdk if you need full JDK
+    }
+    to {
+        image = "windsensorbackend:latest"
+    }
 }
+
 
 
