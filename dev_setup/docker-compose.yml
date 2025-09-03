@@ -9,3 +9,4 @@ services:
       - /home/keystore.p12:/home/keystore.p12:ro
     environment:
       KEY_STORE_PATH: "file:/home/keystore.p12"
+    restart: always
