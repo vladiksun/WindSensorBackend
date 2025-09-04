@@ -3,6 +3,7 @@ package com.vb.wingfoil;
 import io.micronaut.json.tree.JsonArray;
 import io.micronaut.json.tree.JsonNode;
 import io.micronaut.serde.ObjectMapper;
+import io.vavr.control.Try;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 
@@ -40,11 +41,11 @@ public class WindyDataProvider extends BaseWindyDataProvider {
 
             var lastData = dataArr.get(dataArr.size() - 1);
 
-            var windMax = lastData.get("wind_max").getFloatValue();
-            var windAvg = lastData.get("wind_avg").getFloatValue();
-            var windMin = lastData.get("wind_min").getFloatValue();
-            var windDirection = lastData.get("wind_direction").getFloatValue();
-            var temperature = lastData.get("temperature").getFloatValue();
+            var windMax = Try.of(() -> lastData.get("wind_max").getFloatValue()).getOrElse(0F);
+            var windAvg = Try.of(() -> lastData.get("wind_avg").getFloatValue()).getOrElse(0F);
+            var windMin = Try.of(() -> lastData.get("wind_min").getFloatValue()).getOrElse(0F);
+            var windDirection = Try.of(() -> lastData.get("wind_direction").getFloatValue()).getOrElse(0F);
+            var temperature = Try.of(() -> lastData.get("temperature").getFloatValue()).getOrElse(0F);
 
             return new SensorDataDTO(windMax, windAvg, windMin, windDirection, temperature);
         }
