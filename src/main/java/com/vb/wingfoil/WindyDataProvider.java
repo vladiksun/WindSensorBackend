@@ -8,6 +8,8 @@ import jakarta.inject.Singleton;
 
 import java.io.IOException;
 
+import static com.vb.wingfoil.WindSensorConfig.WindDataProviderConfig;
+
 @Singleton
 public class WindyDataProvider extends BaseWindyDataProvider {
 
@@ -24,17 +26,17 @@ public class WindyDataProvider extends BaseWindyDataProvider {
     }
 
     @Override
-    public SensorDTO parseResponse(String response) throws IOException {
-        if (response == null || response.isBlank()) return SensorDTO.empty();
+    public SensorDataDTO parseSensorDataResponse(String response) throws IOException {
+        if (response == null || response.isBlank()) return SensorDataDTO.empty();
 
         var node = objectMapper.readValue(response, JsonNode.class);
 
         var data = node.get("response").get("data");
 
-        if (data == null) return SensorDTO.empty();
+        if (data == null) return SensorDataDTO.empty();
 
         if (data instanceof JsonArray dataArr) {
-            if (dataArr.size() == 0) return SensorDTO.empty();
+            if (dataArr.size() == 0) return SensorDataDTO.empty();
 
             var lastData = dataArr.get(dataArr.size() - 1);
 
@@ -43,9 +45,9 @@ public class WindyDataProvider extends BaseWindyDataProvider {
             var windMin = lastData.get("wind_min").getFloatValue();
             var windDirection = lastData.get("wind_direction").getFloatValue();
 
-            return new SensorDTO(windMax, windAvg, windMin, windDirection);
+            return new SensorDataDTO(windMax, windAvg, windMin, windDirection);
         }
 
-        return SensorDTO.empty();
+        return SensorDataDTO.empty();
     }
 }

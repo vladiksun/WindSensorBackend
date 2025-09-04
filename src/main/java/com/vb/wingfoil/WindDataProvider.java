@@ -1,6 +1,7 @@
 package com.vb.wingfoil;
 
 import java.io.IOException;
+import java.util.List;
 
 public interface WindDataProvider {
 
@@ -10,6 +11,8 @@ public interface WindDataProvider {
 
     String getCallUrl(String sensorId);
 
-    SensorDTO parseResponse(String response) throws IOException;
+    SensorDataDTO parseSensorDataResponse(String response) throws IOException;
+
+    List<SpotData> parseSpotsDataResponse(String response) throws IOException;
 
 }

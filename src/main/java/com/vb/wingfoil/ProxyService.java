@@ -8,6 +8,7 @@ import jakarta.inject.Singleton;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.HttpStatus;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,9 +29,13 @@ public class ProxyService {
 
     private Map<String, WindDataProvider> windDataProvidersByName;
 
+    private final List<WindDataProvider> windDataProviders;
+
     private final CloseableHttpClient httpClient;
 
-    public ProxyService(List<WindDataProvider> windDataProviders) {
+    private final WindSensorConfig windSensorConfig;
+
+    public ProxyService(List<WindDataProvider> windDataProviders, WindSensorConfig windSensorConfig) {
         windDataProvidersByName = windDataProviders.stream()
                 .filter(Objects::nonNull)
                 .filter(p -> p.getName() != null && !p.getName().isBlank())
@@ -41,10 +46,13 @@ public class ProxyService {
                         HashMap::new                // preserves iteration order of the stream
                 ));
 
+        this.windDataProviders = windDataProviders;
+        this.windSensorConfig = windSensorConfig;
+
         httpClient = HttpClients.createDefault();
     }
 
-    Try<SensorDTO> requestSensorData(String providerName, String sensorId) {
+    Try<SensorDataDTO> requestSensorData(String providerName, String sensorId) {
         var provider = Option.of(windDataProvidersByName.get(providerName))
                 .getOrElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerName));
 
@@ -61,8 +69,33 @@ public class ProxyService {
             var entity = response.getEntity();
 
             var body = entity != null ? EntityUtils.toString(entity, StandardCharsets.UTF_8) : "";
-            return provider.parseResponse(body);
-        }));
+            return provider.parseSensorDataResponse(body);
+        }))
+        .onFailure(e -> logger.error("Failed to get sensor data", e));
+    }
+
+    Try<List<SpotData>> requestSpotsData() {
+        var provider = Option.of(windDataProviders.getFirst())
+                .getOrElseThrow(() -> new IllegalArgumentException("provider is not found"));
+
+        var url = windSensorConfig.getSpotsDataUrl();
+        var mediaType = windSensorConfig.getSpotsDataMediaType();
+
+        var request = new HttpGet(url);
+
+        request.addHeader(HttpHeaders.ACCEPT, mediaType);
+
+        return Try.of(() -> httpClient.execute(request, response -> {
+            int status = response.getCode();
+            if (status < HttpStatus.SC_OK || status >= HttpStatus.SC_REDIRECTION) {
+                throw new IOException("Upstream call failed with status " + status + " for " + url);
+            }
+            var entity = response.getEntity();
+
+            var body = entity != null ? EntityUtils.toString(entity, StandardCharsets.UTF_8) : "";
+            return provider.parseSpotsDataResponse(body);
+        }))
+        .onFailure(e -> logger.error("Failed to get spots data", e));
     }
 
 }
