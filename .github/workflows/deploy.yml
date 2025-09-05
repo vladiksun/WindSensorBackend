@@ -58,13 +58,16 @@ jobs:
            docker compose down && \
            docker compose up -d"
 
+      - name: Wait initial startup time
+        run: sleep 10
+
       - name: Check application health
         run: |
           timeout=60
           interval=5
           elapsed=0
           while [ $elapsed -lt $timeout ]; do
-            response=$(curl -s -o response.json -w "%{http_code}" https://${{ secrets.SERVER_IP }}/health)
+            response=$(curl -k -s -o response.json -w "%{http_code}" https://${{ secrets.SERVER_IP }}/health)
             if [ $response -eq 200 ]; then
               status=$(cat response.json | jq -r '.status')
               if [ "$status" = "UP" ]; then
