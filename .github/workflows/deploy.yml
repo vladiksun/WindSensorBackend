@@ -44,11 +44,10 @@ jobs:
           ./dev_setup/docker-compose.yml \
           ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/home/WindSensorBackend/
 
-      - name: Install required tools
+      - name: Install curl and jq
         run: |
-          sshpass -p "${{ secrets.SERVER_PASSWORD }}" \
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
-          "apt-get update && apt-get install -y curl jq"
+          sudo apt-get update
+          sudo apt-get install -y curl jq
 
       - name: Load image and restart container
         run: |
