@@ -1,6 +1,6 @@
 name: Deploy to Server
 on:
-  workflow_dispatch: # Now without inputs since we're using secrets
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
@@ -52,3 +52,24 @@ jobs:
            docker load -i WindSensorBackend.tar && \
            docker compose down && \
            docker compose up -d"
+
+      - name: Check application health
+        run: |
+          timeout=60
+          interval=5
+          elapsed=0
+          while [ $elapsed -lt $timeout ]; do
+            response=$(curl -s -o response.json -w "%{http_code}" https://${{ secrets.SERVER_IP }}/health)
+            if [ $response -eq 200 ]; then
+              status=$(cat response.json | jq -r '.status')
+              if [ "$status" = "UP" ]; then
+                echo "Application is healthy!"
+                exit 0
+              fi
+            fi
+            echo "Waiting for application to become healthy... (${elapsed}s/${timeout}s)"
+            sleep $interval
+            elapsed=$((elapsed + interval))
+          done
+          echo "Health check failed after ${timeout} seconds"
+          exit 1
