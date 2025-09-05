@@ -2,6 +2,7 @@ version: "3.9"
 
 services:
   windsensorbackend:
+    container_name: windsensorbackend
     image: windsensorbackend:latest
     ports:
       - "443:443"
