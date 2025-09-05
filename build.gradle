@@ -75,7 +75,14 @@ jib {
     to {
         image = "windsensorbackend:latest"
     }
+
+    outputPaths {
+        // Change the filename/path as you like
+        tar = file("$buildDir/images/${project.name}.tar")
+    }
+
 }
+
 
 
 
