@@ -21,7 +21,7 @@ source "$VARS_FILE"
 # Validate required variables
 : "${REPO_URL:?REPO_URL is required in vars.sh}"
 : "${CLONE_DIR:?CLONE_DIR is required in vars.sh}"
-: "${DEV_SETUP_DIR:?DEV_SETUP_DIR is required in vars.sh}"
+: "${SCRIPTS_DIR:?SCRIPTS_DIR is required in vars.sh}"
 
 # 1) Check git availability only
 if ! command -v git >/dev/null 2>&1; then
@@ -43,7 +43,7 @@ fi
 
 log "Ensuring any existing Docker Compose stack is stopped (if running) ..."
 (
-  cd "$DEV_SETUP_DIR"
+  cd "$SCRIPTS_DIR"
   # Try to stop any running stack; ignore errors if nothing is running yet
   docker compose down --remove-orphans || true
 )
@@ -57,16 +57,16 @@ log "Building Docker image with Gradle Jib..."
 )
 
 # 4) Run docker compose from dev_setup
-if [[ ! -d "$DEV_SETUP_DIR" ]]; then
-  err "dev_setup directory not found at: $DEV_SETUP_DIR"
+if [[ ! -d "$SCRIPTS_DIR" ]]; then
+  err "dev_setup directory not found at: $SCRIPTS_DIR"
   exit 1
 fi
 
-log "Starting services with Docker Compose from $DEV_SETUP_DIR ..."
+log "Starting services with Docker Compose from $SCRIPTS_DIR ..."
 (
-  cd "$DEV_SETUP_DIR"
+  cd "$SCRIPTS_DIR"
   docker compose up -d
 )
 
 log "All done. To see logs, run:"
-echo "  cd \"$DEV_SETUP_DIR\" && docker compose logs -f"
+echo "  cd \"$SCRIPTS_DIR\" && docker compose logs -f"

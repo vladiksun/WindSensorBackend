@@ -32,7 +32,7 @@ echo "[INFO] Keystore regenerated at $KEYSTORE"
 
 log "Restart container using Docker Compose ..."
 (
-  cd "$DEV_SETUP_DIR"
+  cd "$APP_DIR"
   # Try to stop any running stack; ignore errors if nothing is running yet
   docker compose restart windsensorbackend
 )

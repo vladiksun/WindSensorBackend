@@ -4,10 +4,10 @@
 REPO_URL="${REPO_URL:-https://github.com/vladiksun/WindSensorBackend.git}"
 
 # Local clone directory (change if you want a different path)
-CLONE_DIR="${CLONE_DIR:-$HOME/WindSensorBackend}"
+APP_DIR="${APP_DIR:-/home/WindSensorBackend}"
 
 # Path to the dev_setup directory inside the repo
-DEV_SETUP_DIR="${DEV_SETUP_DIR:-$CLONE_DIR/dev_setup}"
+SCRIPTS_DIR="${SCRIPTS_DIR:-$APP_DIR/scripts}"
 
 DOMAIN="${DOMAIN:-vm67706.vpsone.xyz}"
 KEYSTORE="${KEYSTORE:-/home/keystore.p12}"
