@@ -45,9 +45,8 @@ public class WindyDataProvider extends BaseWindyDataProvider {
             var windAvg = Try.of(() -> lastData.get("wind_avg").getFloatValue()).getOrElse(0F);
             var windMin = Try.of(() -> lastData.get("wind_min").getFloatValue()).getOrElse(0F);
             var windDirection = Try.of(() -> lastData.get("wind_direction").getFloatValue()).getOrElse(0F);
-            var temperature = Try.of(() -> lastData.get("temperature").getFloatValue()).getOrElse(0F);
 
-            return new SensorDataDTO(windMax, windAvg, windMin, windDirection, temperature);
+            return new SensorDataDTO(windMax, windAvg, windMin, windDirection);
         }
 
         return SensorDataDTO.empty();
