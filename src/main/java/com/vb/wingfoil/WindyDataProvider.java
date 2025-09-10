@@ -1,7 +1,7 @@
 package com.vb.wingfoil;
 
-import io.micronaut.json.tree.JsonArray;
-import io.micronaut.json.tree.JsonNode;
+import com.vb.wingfoil.response.windy.WindStationApiResponse;
+import io.micronaut.core.util.CollectionUtils;
 import io.micronaut.serde.ObjectMapper;
 import io.vavr.control.Try;
 import jakarta.inject.Named;
@@ -12,7 +12,7 @@ import java.io.IOException;
 import static com.vb.wingfoil.WindSensorConfig.WindDataProviderConfig;
 
 @Singleton
-public class WindyDataProvider extends BaseWindyDataProvider {
+public class WindyDataProvider extends BaseWindyDataProvider<WindStationApiResponse> {
 
     public static final String NAME = "windy";
 
@@ -27,28 +27,30 @@ public class WindyDataProvider extends BaseWindyDataProvider {
     }
 
     @Override
-    public SensorDataDTO parseSensorDataResponse(String response) throws IOException {
-        if (response == null || response.isBlank()) return SensorDataDTO.empty();
+    public Try<SensorDataDTO> extractLastReading(String response) throws IOException {
+        if (response == null || response.isBlank()) return Try.success(SensorDataDTO.empty());
 
-        var node = objectMapper.readValue(response, JsonNode.class);
+        var windyResponse = objectMapper.readValue(response, WindStationApiResponse.class);
 
-        var data = node.get("response").get("data");
+        if (windyResponse == null) return Try.success(SensorDataDTO.empty());
 
-        if (data == null) return SensorDataDTO.empty();
-
-        if (data instanceof JsonArray dataArr) {
-            if (dataArr.size() == 0) return SensorDataDTO.empty();
-
-            var lastData = dataArr.get(dataArr.size() - 1);
-
-            var windMax = Try.of(() -> lastData.get("wind_max").getFloatValue()).getOrElse(0F);
-            var windAvg = Try.of(() -> lastData.get("wind_avg").getFloatValue()).getOrElse(0F);
-            var windMin = Try.of(() -> lastData.get("wind_min").getFloatValue()).getOrElse(0F);
-            var windDirection = Try.of(() -> lastData.get("wind_direction").getFloatValue()).getOrElse(0F);
-
-            return new SensorDataDTO(windMax, windAvg, windMin, windDirection);
+        if (!"success".equals(windyResponse.status())) {
+            return Try.failure(new RuntimeException("Windy provider returned an error. Full response: %s".formatted(response)));
         }
 
-        return SensorDataDTO.empty();
+        var data = windyResponse.response().data();
+        if (CollectionUtils.isEmpty(data)) {
+            return Try.success(SensorDataDTO.empty());
+        }
+
+        var lastData = data.getLast();
+
+        var windMax = lastData.windMax();
+        var windAvg = lastData.windAvg();
+        var windMin = lastData.windMin();
+        var windDirection = lastData.windDirection();
+        var timestamp = lastData.timestamp();
+
+        return Try.success(new SensorDataDTO(windMax, windAvg, windMin, windDirection, timestamp));
     }
 }

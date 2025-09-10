@@ -1,7 +1,9 @@
 package com.vb.wingfoil;
 
+import io.micronaut.core.type.Argument;
 import io.micronaut.http.HttpHeaders;
 import io.micronaut.http.MediaType;
+import io.micronaut.serde.ObjectMapper;
 import io.vavr.control.Option;
 import io.vavr.control.Try;
 import jakarta.inject.Singleton;
@@ -27,15 +29,19 @@ public class ProxyService {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    private Map<String, WindDataProvider> windDataProvidersByName;
+    private Argument<List<SpotData>> argument = Argument.listOf(SpotData.class);
 
-    private final List<WindDataProvider> windDataProviders;
+    private Map<String, WindDataProvider> windDataProvidersByName;
 
     private final CloseableHttpClient httpClient;
 
     private final WindSensorConfig windSensorConfig;
 
-    public ProxyService(List<WindDataProvider> windDataProviders, WindSensorConfig windSensorConfig) {
+    private final ObjectMapper objectMapper;
+
+    public ProxyService(List<WindDataProvider> windDataProviders,
+                        WindSensorConfig windSensorConfig,
+                        ObjectMapper objectMapper) {
         windDataProvidersByName = windDataProviders.stream()
                 .filter(Objects::nonNull)
                 .filter(p -> p.getName() != null && !p.getName().isBlank())
@@ -46,8 +52,8 @@ public class ProxyService {
                         HashMap::new                // preserves iteration order of the stream
                 ));
 
-        this.windDataProviders = windDataProviders;
         this.windSensorConfig = windSensorConfig;
+        this.objectMapper = objectMapper;
 
         httpClient = HttpClients.createDefault();
     }
@@ -69,15 +75,15 @@ public class ProxyService {
             var entity = response.getEntity();
 
             var body = entity != null ? EntityUtils.toString(entity, StandardCharsets.UTF_8) : "";
-            return provider.parseSensorDataResponse(body);
+
+            return provider.extractLastReading(body);
+
         }))
+        .flatMap(o -> o)
         .onFailure(e -> logger.error("Failed to get sensor data", e));
     }
 
     Try<List<SpotData>> requestSpotsData() {
-        var provider = Option.of(windDataProviders.getFirst())
-                .getOrElseThrow(() -> new IllegalArgumentException("provider is not found"));
-
         var url = windSensorConfig.getSpotsDataUrl();
         var mediaType = windSensorConfig.getSpotsDataMediaType();
 
@@ -93,9 +99,18 @@ public class ProxyService {
             var entity = response.getEntity();
 
             var body = entity != null ? EntityUtils.toString(entity, StandardCharsets.UTF_8) : "";
-            return provider.parseSpotsDataResponse(body);
+
+            return parseSpotsDataResponse(body);
         }))
         .onFailure(e -> logger.error("Failed to get spots data", e));
+    }
+
+    private List<SpotData> parseSpotsDataResponse(String response) throws IOException {
+        if (response == null || response.isBlank()) return List.of();
+
+        var result = objectMapper.readValue(response, argument);
+
+        return result;
     }
 
 }
