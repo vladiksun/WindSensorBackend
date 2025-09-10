@@ -87,7 +87,7 @@ public class WindyDataProvider extends BaseWindyDataProvider<WindStationApiRespo
     }
 
     /**
-     * Reduces the list of timestamps to exactly n elements.
+     * Reduces the list of timestamps to exactly numberOfReadings elements.
      * Always includes the first and last elements, and distributes
      * the rest as evenly as possible.
      *
@@ -124,7 +124,7 @@ public class WindyDataProvider extends BaseWindyDataProvider<WindStationApiRespo
     }
 
     /**
-     * Reduces the list of timestamps to exactly n elements.
+     * Reduces the list of timestamps to exactly numberOfReadings elements.
      * Always includes the first and last elements, and distributes
      * the rest as evenly as possible.
      *
