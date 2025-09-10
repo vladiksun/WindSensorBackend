@@ -3,6 +3,7 @@ package com.vb.wingfoil;
 import io.vavr.control.Try;
 
 import java.io.IOException;
+import java.util.List;
 
 public interface WindDataProvider {
 
@@ -12,5 +13,5 @@ public interface WindDataProvider {
 
     String getCallUrl(String sensorId);
 
-    Try<SensorDataDTO> extractLastReading(String response) throws IOException;
+    Try<List<SensorDataDTO>> extractTimedReadings(String response, int readingWindowSeconds, int numberOfReadings) throws IOException;
 }

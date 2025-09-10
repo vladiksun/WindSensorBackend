@@ -58,7 +58,14 @@ public class ProxyService {
         httpClient = HttpClients.createDefault();
     }
 
-    Try<SensorDataDTO> requestSensorData(String providerName, String sensorId) {
+    Try<SensorDataDTO> requestSensorDataLastReading(String providerName, String sensorId) {
+        return requestTimedReadings(providerName, sensorId, 0, 0).map(List::getFirst);
+    }
+
+    Try<List<SensorDataDTO>> requestTimedReadings(String providerName,
+                                                  String sensorId,
+                                                  int readingWindowSeconds,
+                                                  int numberOfReadings) {
         var provider = Option.of(windDataProvidersByName.get(providerName))
                 .getOrElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerName));
 
@@ -76,8 +83,7 @@ public class ProxyService {
 
             var body = entity != null ? EntityUtils.toString(entity, StandardCharsets.UTF_8) : "";
 
-            return provider.extractLastReading(body);
-
+            return provider.extractTimedReadings(body, readingWindowSeconds, numberOfReadings);
         }))
         .flatMap(o -> o)
         .onFailure(e -> logger.error("Failed to get sensor data", e));

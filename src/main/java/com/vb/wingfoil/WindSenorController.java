@@ -22,7 +22,16 @@ public class WindSenorController {
         if (provider == null) throw new IllegalArgumentException("provider parameter must not be null");
         if (sensorId == null || sensorId.isBlank()) throw new IllegalArgumentException("sensorId parameter must not be null or blank");
 
-        return proxyService.requestSensorData(provider, sensorId).get();
+        return proxyService.requestSensorDataLastReading(provider, sensorId).get();
+    }
+
+    @Get("/sensor-data/v2")
+    @ExecuteOn(TaskExecutors.VIRTUAL)
+    public List<SensorDataDTO> getSensorDataV2(String provider, String sensorId) {
+        if (provider == null) throw new IllegalArgumentException("provider parameter must not be null");
+        if (sensorId == null || sensorId.isBlank()) throw new IllegalArgumentException("sensorId parameter must not be null or blank");
+
+        return proxyService.requestTimedReadings(provider, sensorId, 3600, 4).get();
     }
 
     @Get("/spots-data")
