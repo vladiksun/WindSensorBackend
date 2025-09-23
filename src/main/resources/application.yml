@@ -37,6 +37,8 @@ wind-sensor:
   wind-providers:
     windy:
       url: https://api.windyapp.co/apiV9.php?method=getMeteostationDataAndInfo&meteostationID=%s
+    neduet:
+      url: https://neduet.ru/api/full
 
   spots-data-url: ${SPOTS_DATA_URL:`https://raw.githubusercontent.com/vladiksun/WindSensorConfig/refs/heads/main/spots.json`}
   spots-data-media-type: ${SPOTS_DATA_MEDIA_TYPE:`text/plain`}

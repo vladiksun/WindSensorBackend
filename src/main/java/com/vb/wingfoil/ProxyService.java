@@ -66,10 +66,20 @@ public class ProxyService {
                                                   String sensorId,
                                                   int readingWindowSeconds,
                                                   int numberOfReadings) {
-        var provider = Option.of(windDataProvidersByName.get(providerName))
-                .getOrElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerName));
+        WindDataProvider provider;
+        String effectiveSensorId;
 
-        var url = provider.getCallUrl(sensorId);
+        if (sensorId.startsWith(NeduetDataProvider.NAME)) {
+            provider = windDataProvidersByName.get(NeduetDataProvider.NAME);
+            effectiveSensorId = sensorId.replace(NeduetDataProvider.NAME + "_", "");
+            var test = "";
+        } else {
+            effectiveSensorId = sensorId;
+            provider = Option.of(windDataProvidersByName.get(providerName))
+                    .getOrElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerName));
+        }
+
+        var url = provider.getCallUrl(effectiveSensorId);
 
         var request = new HttpGet(url);
         request.addHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON);
@@ -83,7 +93,7 @@ public class ProxyService {
 
             var body = entity != null ? EntityUtils.toString(entity, StandardCharsets.UTF_8) : "";
 
-            return provider.extractTimedReadings(body, readingWindowSeconds, numberOfReadings);
+            return provider.extractTimedReadings(effectiveSensorId, body, readingWindowSeconds, numberOfReadings);
         }))
         .flatMap(o -> o)
         .onFailure(e -> logger.error("Failed to get sensor data", e));

@@ -1,7 +1,9 @@
 package com.vb.wingfoil;
 
-import com.vb.wingfoil.response.windy.WindyMeasurement;
+import com.vb.wingfoil.response.neduet.NeduetMeasurement;
+import com.vb.wingfoil.response.neduet.NeduetStationInfo;
 import com.vb.wingfoil.response.windy.WindyStationApiResponse;
+import io.micronaut.core.type.Argument;
 import io.micronaut.core.util.CollectionUtils;
 import io.micronaut.serde.ObjectMapper;
 import io.vavr.control.Try;
@@ -19,20 +21,22 @@ import java.util.stream.Collectors;
 import static com.vb.wingfoil.WindSensorConfig.WindDataProviderConfig;
 
 @Singleton
-public class WindyDataProvider extends BaseWindyDataProvider<WindyStationApiResponse> {
+public class NeduetDataProvider extends BaseWindyDataProvider<WindyStationApiResponse> {
 
-    public static final String NAME = "windy";
+    public static final String NAME = "neduet";
 
-    private static final Logger log = LoggerFactory.getLogger(WindyDataProvider.class);
+    private static final Logger log = LoggerFactory.getLogger(NeduetDataProvider.class);
 
-    protected WindyDataProvider(@Named(NAME) WindDataProviderConfig windDataProviderConfig,
-                                ObjectMapper objectMapper) {
+    private Argument<List<NeduetStationInfo>> argument = Argument.listOf(NeduetStationInfo.class);
+
+    protected NeduetDataProvider(@Named(NAME) WindDataProviderConfig windDataProviderConfig,
+                                 ObjectMapper objectMapper) {
         super(windDataProviderConfig, objectMapper);
     }
 
     @Override
     public String getCallUrl(String sensorId) {
-        return getUrl().formatted(sensorId);
+        return getUrl();
     }
 
     @Override
@@ -42,15 +46,13 @@ public class WindyDataProvider extends BaseWindyDataProvider<WindyStationApiResp
                                                          int numberOfReadings) throws IOException {
         if (response == null || response.isBlank()) return Try.success(List.of(SensorDataDTO.empty()));
 
-        var windyResponse = objectMapper.readValue(response, WindyStationApiResponse.class);
+        List<NeduetStationInfo> stations = objectMapper.readValue(response, argument);
 
-        if (windyResponse == null) return Try.success(List.of(SensorDataDTO.empty()));
+        var data = stations.stream()
+                .filter(neduetStationInfo -> sensorId.equals(neduetStationInfo.id()))
+                .findFirst()
+                .map(NeduetStationInfo::data).orElse(List.of());
 
-        if (!"success".equals(windyResponse.status())) {
-            return Try.failure(new RuntimeException("Windy provider returned an error. Full response: %s".formatted(response)));
-        }
-
-        var data = windyResponse.response().data();
         if (CollectionUtils.isEmpty(data)) {
             return Try.success(List.of(SensorDataDTO.empty()));
         }
@@ -62,10 +64,10 @@ public class WindyDataProvider extends BaseWindyDataProvider<WindyStationApiResp
         return Try.success(getReadingByInterval(data, readingWindowSeconds, numberOfReadings));
     }
 
-    private List<SensorDataDTO> getReadingByInterval(List<WindyMeasurement> data, int readingWindowSeconds, int numberOfReadings) {
+    private List<SensorDataDTO> getReadingByInterval(List<NeduetMeasurement> data, int readingWindowSeconds, int numberOfReadings) {
         var lastIndex = data.size() - 1;
 
-        var windowReadings = new LinkedList<WindyMeasurement>();
+        var windowReadings = new LinkedList<NeduetMeasurement>();
 
         long lastTimeStamp = data.getLast().timestamp();
 
@@ -79,12 +81,12 @@ public class WindyDataProvider extends BaseWindyDataProvider<WindyStationApiResp
 
         var reducedWindowReadings = reduceWindowTimestamps(windowReadings, numberOfReadings);
 
-        return reducedWindowReadings.stream().map(windyMeasurement -> {
-            var windMax = windyMeasurement.windMax();
-            var windAvg = windyMeasurement.windAvg();
-            var windMin = windyMeasurement.windMin();
-            var windDirection = windyMeasurement.windDirection();
-            var timestamp = windyMeasurement.timestamp();
+        return reducedWindowReadings.stream().map(measurement -> {
+            var windMax = measurement.max();
+            var windAvg = measurement.avr();
+            var windMin = measurement.min();
+            var windDirection = measurement.dir();
+            var timestamp = measurement.timestamp();
 
             return new SensorDataDTO(windMax, windAvg, windMin, windDirection, timestamp);
         }).collect(Collectors.toList());
@@ -99,7 +101,7 @@ public class WindyDataProvider extends BaseWindyDataProvider<WindyStationApiResp
      * @param numberOfReadings desired number of output elements
      * @return reduced list of timestamps
      */
-    public List<WindyMeasurement> reduceWindowTimestamps(List<WindyMeasurement> readings, int numberOfReadings) {
+    public List<NeduetMeasurement> reduceWindowTimestamps(List<NeduetMeasurement> readings, int numberOfReadings) {
         if (readings == null || readings.isEmpty()) {
             return new ArrayList<>();
         }
@@ -113,7 +115,7 @@ public class WindyDataProvider extends BaseWindyDataProvider<WindyStationApiResp
             throw new IllegalArgumentException("numberOfReadings must be at least 2 to include first and last");
         }
 
-        List<WindyMeasurement> result = new ArrayList<>();
+        List<NeduetMeasurement> result = new ArrayList<>();
         result.add(readings.get(0)); // always include first
 
         double step = (double)(size - 1) / (numberOfReadings - 1);
@@ -164,13 +166,13 @@ public class WindyDataProvider extends BaseWindyDataProvider<WindyStationApiResp
         return result;
     }
 
-    private SensorDataDTO getLastReading(List<WindyMeasurement> data) {
+    private SensorDataDTO getLastReading(List<NeduetMeasurement> data) {
         var lastData = data.getLast();
 
-        var windMax = lastData.windMax();
-        var windAvg = lastData.windAvg();
-        var windMin = lastData.windMin();
-        var windDirection = lastData.windDirection();
+        var windMax = lastData.max();
+        var windAvg = lastData.avr();
+        var windMin = lastData.min();
+        var windDirection = lastData.dir();
         var timestamp = lastData.timestamp();
 
         return new SensorDataDTO(windMax, windAvg, windMin, windDirection, timestamp);

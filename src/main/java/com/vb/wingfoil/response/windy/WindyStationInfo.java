@@ -5,9 +5,8 @@ import io.micronaut.serde.annotation.Serdeable;
 import io.micronaut.serde.config.naming.SnakeCaseStrategy;
 
 @Serdeable(naming = SnakeCaseStrategy.class)
-public record WindStationApiResponse(
-    @NonNull String status,
-    @NonNull WindResponse response,
-    long time
+public record WindyStationInfo(
+    @NonNull String name,
+    @NonNull String tzName
 ) {
 }
