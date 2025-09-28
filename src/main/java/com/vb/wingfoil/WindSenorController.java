@@ -10,6 +10,8 @@ import java.util.List;
 @Controller
 public class WindSenorController {
 
+    public static final int READING_WINDOW_SECONDS = 7200;
+
     private final ProxyService proxyService;
 
     public WindSenorController(ProxyService proxyService) {
@@ -31,7 +33,7 @@ public class WindSenorController {
         if (provider == null) throw new IllegalArgumentException("provider parameter must not be null");
         if (sensorId == null || sensorId.isBlank()) throw new IllegalArgumentException("sensorId parameter must not be null or blank");
 
-        return proxyService.requestTimedReadings(provider, sensorId, 3600, 5).get();
+        return proxyService.requestTimedReadings(provider, sensorId, READING_WINDOW_SECONDS, 5).get();
     }
 
     @Get("/spots-data")
