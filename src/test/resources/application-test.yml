@@ -1,0 +1,4 @@
+wind-sensor:
+  spots-data-url: ${SPOTS_DATA_URL:`https://raw.githubusercontent.com/vladiksun/WindSensorConfig/refs/heads/main/spots_test.json`}
+
+

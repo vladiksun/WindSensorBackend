@@ -1,16 +1,19 @@
 package com.vb.wingfoil;
 
-import io.micronaut.http.annotation.Controller;
-import io.micronaut.http.annotation.Get;
+import io.micronaut.http.HttpRequest;
+import io.micronaut.http.HttpResponse;
+import io.micronaut.http.annotation.*;
+import io.micronaut.http.annotation.Error;
+import io.micronaut.http.hateoas.JsonError;
+import io.micronaut.http.hateoas.Link;
 import io.micronaut.scheduling.TaskExecutors;
 import io.micronaut.scheduling.annotation.ExecuteOn;
+import io.vavr.control.Option;
 
 import java.util.List;
 
 @Controller
 public class WindSenorController {
-
-    public static final int READING_WINDOW_SECONDS = 7200;
 
     private final ProxyService proxyService;
 
@@ -18,28 +21,29 @@ public class WindSenorController {
         this.proxyService = proxyService;
     }
 
-    @Get("/sensor-data")
+    @Post("/sensor-data")
     @ExecuteOn(TaskExecutors.VIRTUAL)
-    public SensorDataDTO getSensorData(String provider, String sensorId) {
-        if (provider == null) throw new IllegalArgumentException("provider parameter must not be null");
-        if (sensorId == null || sensorId.isBlank()) throw new IllegalArgumentException("sensorId parameter must not be null or blank");
-
-        return proxyService.requestSensorDataLastReading(provider, sensorId).get();
-    }
-
-    @Get("/sensor-data/v2")
-    @ExecuteOn(TaskExecutors.VIRTUAL)
-    public List<SensorDataDTO> getSensorDataV2(String provider, String sensorId) {
-        if (provider == null) throw new IllegalArgumentException("provider parameter must not be null");
-        if (sensorId == null || sensorId.isBlank()) throw new IllegalArgumentException("sensorId parameter must not be null or blank");
-
-        return proxyService.requestTimedReadings(provider, sensorId, READING_WINDOW_SECONDS, 5).get();
+    public List<SensorDataDTO> getSensorData(@Body SensorRequestDTO sensorRequest) {
+        return proxyService.requestTimedReadings(
+                Option.of(sensorRequest.readingWindow()),
+                Option.of(sensorRequest.numberOfReadings()),
+                sensorRequest.sensor()
+                ).get();
     }
 
     @Get("/spots-data")
     @ExecuteOn(TaskExecutors.VIRTUAL)
-    public List<SpotData> getSpotsData() {
-        return proxyService.requestSpotsData().get();
+    public List<SpotDataDTO> getSpotsData(@QueryValue(defaultValue = "false") boolean isDebug) {
+        return proxyService.requestSpotsData(isDebug).get();
+    }
+
+    @Error(global = true)
+    public HttpResponse<JsonError> error(HttpRequest<?> request, Throwable e) {
+        var error = new JsonError(e.getMessage())
+                .link(Link.SELF, Link.of(request.getUri()));
+
+        return HttpResponse.<JsonError>serverError()
+                .body(error);
     }
 
 }

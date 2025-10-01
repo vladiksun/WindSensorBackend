@@ -10,7 +10,9 @@ import jakarta.inject.Singleton;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.HttpStatus;
+import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +31,11 @@ public class ProxyService {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    private Argument<List<SpotData>> argument = Argument.listOf(SpotData.class);
+    public static final int READING_WINDOW_SECONDS_DEFAULT = 3600;
+
+    public static final int NUMBER_OF_READINGS_DEFAULT = 5;
+
+    private Argument<List<SpotDataDTO>> argument = Argument.listOf(SpotDataDTO.class);
 
     private Map<String, WindDataProvider> windDataProvidersByName;
 
@@ -58,49 +64,71 @@ public class ProxyService {
         httpClient = HttpClients.createDefault();
     }
 
-    Try<SensorDataDTO> requestSensorDataLastReading(String providerName, String sensorId) {
-        return requestTimedReadings(providerName, sensorId, 0, 0).map(List::getFirst);
-    }
-
-    Try<List<SensorDataDTO>> requestTimedReadings(String providerName,
-                                                  String sensorId,
-                                                  int readingWindowSeconds,
-                                                  int numberOfReadings) {
-        WindDataProvider provider;
-        String effectiveSensorId;
-
-        if (sensorId.startsWith(NeduetDataProvider.NAME)) {
-            provider = windDataProvidersByName.get(NeduetDataProvider.NAME);
-            effectiveSensorId = sensorId.replace(NeduetDataProvider.NAME + "_", "");
-            var test = "";
-        } else {
-            effectiveSensorId = sensorId;
-            provider = Option.of(windDataProvidersByName.get(providerName))
-                    .getOrElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerName));
+    Try<List<SensorDataDTO>> requestTimedReadings(Option<Integer> mayBeAreaReadingWindow,
+                                                  Option<Integer> maybeAreaNumberOfReadings,
+                                                  SensorDTO sensor) {
+        var providerCode = sensor.provider();
+        var sensorId = sensor.id();
+        if (providerCode == null) {
+            return Try.failure(new IllegalArgumentException("provider parameter must not be null"));
+        }
+        if (sensorId == null || sensorId.isBlank()) {
+            return Try.failure(new IllegalArgumentException("sensorId parameter must not be null or blank"));
         }
 
-        var url = provider.getCallUrl(effectiveSensorId);
+        var provider = Option.of(windDataProvidersByName.get(providerCode))
+                .getOrElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerCode));;
+
+        var url = provider.getCallUrl(sensorId);
 
         var request = new HttpGet(url);
         request.addHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON);
 
-        return Try.of(() -> httpClient.execute(request, response -> {
-            int status = response.getCode();
-            if (status < 200 || status >= 300) {
-                throw new IOException("Upstream call failed with status " + status + " for " + url);
-            }
-            var entity = response.getEntity();
-
-            var body = entity != null ? EntityUtils.toString(entity, StandardCharsets.UTF_8) : "";
-
-            return provider.extractTimedReadings(effectiveSensorId, body, readingWindowSeconds, numberOfReadings);
-        }))
+        return Try.of(() -> httpClient.execute(request, response -> handleResponse(
+                        mayBeAreaReadingWindow,
+                        maybeAreaNumberOfReadings,
+                        sensor,
+                        response,
+                        url,
+                        provider,
+                        sensorId)))
         .flatMap(o -> o)
         .onFailure(e -> logger.error("Failed to get sensor data", e));
     }
 
-    Try<List<SpotData>> requestSpotsData() {
-        var url = windSensorConfig.getSpotsDataUrl();
+    private static Try<List<SensorDataDTO>> handleResponse(Option<Integer> mayBeAreaReadingWindow,
+                                                           Option<Integer> maybeAreaNumberOfReadings,
+                                                           SensorDTO sensor,
+                                                           ClassicHttpResponse response,
+                                                           String url,
+                                                           WindDataProvider provider,
+                                                           String sensorId) throws IOException, ParseException {
+        int status = response.getCode();
+        if (status < 200 || status >= 300) {
+            throw new IOException("Upstream call failed with status " + status + " for " + url);
+        }
+        var entity = response.getEntity();
+
+        var body = entity != null ? EntityUtils.toString(entity, StandardCharsets.UTF_8) : "";
+
+        var readingWindow = mayBeAreaReadingWindow.getOrElse(READING_WINDOW_SECONDS_DEFAULT);
+        var numberOfReadings =  maybeAreaNumberOfReadings.getOrElse(NUMBER_OF_READINGS_DEFAULT);
+
+        // take priority from the sensor meta if exists
+        readingWindow = Option.of(sensor.readingWindow()).getOrElse(readingWindow);
+        numberOfReadings = Option.of(sensor.numberOfReadings()).getOrElse(numberOfReadings);
+
+        return provider.extractTimedReadings(sensorId, body, readingWindow, numberOfReadings);
+    }
+
+    Try<List<SpotDataDTO>> requestSpotsData(boolean isDebug) {
+        String url;
+        if (isDebug) {
+            url = "https://raw.githubusercontent.com/vladiksun/WindSensorConfig/refs/heads/main/spots_test.json";
+        } else {
+            url = windSensorConfig.getSpotsDataUrl();
+        }
+
         var mediaType = windSensorConfig.getSpotsDataMediaType();
 
         var request = new HttpGet(url);
@@ -121,12 +149,11 @@ public class ProxyService {
         .onFailure(e -> logger.error("Failed to get spots data", e));
     }
 
-    private List<SpotData> parseSpotsDataResponse(String response) throws IOException {
+    private List<SpotDataDTO> parseSpotsDataResponse(String response) throws IOException {
         if (response == null || response.isBlank()) return List.of();
 
         var result = objectMapper.readValue(response, argument);
 
         return result;
     }
-
 }
