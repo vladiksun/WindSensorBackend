@@ -10,7 +10,6 @@ import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -39,27 +38,30 @@ public class WindyDataProvider extends BaseWindyDataProvider<WindyStationApiResp
     public Try<List<SensorDataDTO>> extractTimedReadings(String sensorId,
                                                          String response,
                                                          int readingWindowSeconds,
-                                                         int numberOfReadings) throws IOException {
+                                                         int numberOfReadings) {
         if (response == null || response.isBlank()) return Try.success(List.of(SensorDataDTO.empty()));
 
-        var windyResponse = objectMapper.readValue(response, WindyStationApiResponse.class);
+        return Try.of(() -> objectMapper.readValue(response, WindyStationApiResponse.class))
+                .map(windyResponse -> {
+                    if (!"success".equals(windyResponse.status())) {
+                        return Try.<List<SensorDataDTO>>failure(new RuntimeException("Windy provider returned an error. Full response: %s".formatted(response)));
+                    }
 
-        if (windyResponse == null) return Try.success(List.of(SensorDataDTO.empty()));
+                    var data = windyResponse.response().data();
+                    if (CollectionUtils.isEmpty(data)) {
+                        return Try.success(List.of(SensorDataDTO.empty()));
+                    }
 
-        if (!"success".equals(windyResponse.status())) {
-            return Try.failure(new RuntimeException("Windy provider returned an error. Full response: %s".formatted(response)));
-        }
+                    if (readingWindowSeconds == 0 && numberOfReadings == 0) {
+                        return Try.success(List.of(getLastReading(data)));
+                    }
 
-        var data = windyResponse.response().data();
-        if (CollectionUtils.isEmpty(data)) {
-            return Try.success(List.of(SensorDataDTO.empty()));
-        }
-
-        if (readingWindowSeconds == 0 && numberOfReadings == 0) {
-            return Try.success(List.of(getLastReading(data)));
-        }
-
-        return Try.success(getReadingByInterval(data, readingWindowSeconds, numberOfReadings));
+                    return Try.success(getReadingByInterval(data, readingWindowSeconds, numberOfReadings));
+        })
+        .recover(throwable -> {
+                log.error("Error deserializing Windy provider response: {}", response, throwable);
+                return Try.success(List.of(SensorDataDTO.empty()));
+        }).flatMap(o -> o);
     }
 
     private List<SensorDataDTO> getReadingByInterval(List<WindyMeasurement> data, int readingWindowSeconds, int numberOfReadings) {
