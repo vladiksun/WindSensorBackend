@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.ToLongFunction;
 
-public abstract class BaseWindyDataProvider<T> implements WindDataProvider {
+public abstract class BaseWindyDataProvider<T> implements WindDataProvider<T> {
 
     private final String name;
 

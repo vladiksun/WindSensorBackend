@@ -6,7 +6,7 @@ import io.vavr.control.Try;
 import java.io.IOException;
 import java.util.List;
 
-public interface WindDataProvider {
+public interface WindDataProvider<T> {
 
     String getName();
 
@@ -18,4 +18,8 @@ public interface WindDataProvider {
                                                   String response,
                                                   int readingWindowSeconds,
                                                   int numberOfReadings) throws IOException;
+
+    SensorDataDTO mapToDTO(T measurement);
+
+    SensorDataDTO getLastReading(List<T> data);
 }

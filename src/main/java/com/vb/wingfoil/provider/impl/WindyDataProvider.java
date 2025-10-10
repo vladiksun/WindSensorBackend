@@ -15,7 +15,7 @@ import java.util.List;
 import static com.vb.wingfoil.WindSensorConfig.WindDataProviderConfig;
 
 @Singleton
-public class WindyDataProvider extends BaseWindyDataProvider<WindyStationApiResponse> {
+public class WindyDataProvider extends BaseWindyDataProvider<WindyMeasurement> {
 
     public static final String NAME = "windy";
 
@@ -55,13 +55,7 @@ public class WindyDataProvider extends BaseWindyDataProvider<WindyStationApiResp
                                     rw,
                                     nr,
                                     WindyMeasurement::timestamp,
-                                    windyMeasurement -> new SensorDataDTO(
-                                            windyMeasurement.windMax(),
-                                            windyMeasurement.windAvg(),
-                                            windyMeasurement.windMin(),
-                                            windyMeasurement.windDirection(),
-                                            windyMeasurement.timestamp()
-                                    )
+                                    this::mapToDTO
                             )
                     );
         })
@@ -71,8 +65,19 @@ public class WindyDataProvider extends BaseWindyDataProvider<WindyStationApiResp
         }).flatMap(o -> o);
     }
 
+    @Override
+    public SensorDataDTO mapToDTO(WindyMeasurement measurement) {
+        return new SensorDataDTO(
+                measurement.windMax(),
+                measurement.windAvg(),
+                measurement.windMin(),
+                measurement.windDirection(),
+                measurement.timestamp()
+        );
+    }
 
-    private SensorDataDTO getLastReading(List<WindyMeasurement> data) {
+    @Override
+    public SensorDataDTO getLastReading(List<WindyMeasurement> data) {
         var lastData = data.getLast();
 
         var windMax = lastData.windMax();

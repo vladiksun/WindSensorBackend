@@ -3,7 +3,6 @@ package com.vb.wingfoil.provider.impl;
 import com.vb.wingfoil.SensorDataDTO;
 import com.vb.wingfoil.response.neduet.NeduetMeasurement;
 import com.vb.wingfoil.response.neduet.NeduetStationInfo;
-import com.vb.wingfoil.response.windy.WindyStationApiResponse;
 import io.micronaut.core.type.Argument;
 import io.micronaut.serde.ObjectMapper;
 import io.vavr.control.Try;
@@ -18,7 +17,7 @@ import java.util.List;
 import static com.vb.wingfoil.WindSensorConfig.WindDataProviderConfig;
 
 @Singleton
-public class NeduetDataProvider extends BaseWindyDataProvider<WindyStationApiResponse> {
+public class NeduetDataProvider extends BaseWindyDataProvider<NeduetMeasurement> {
 
     public static final String NAME = "neduet";
 
@@ -60,19 +59,24 @@ public class NeduetDataProvider extends BaseWindyDataProvider<WindyStationApiRes
                         rw,
                         nr,
                         NeduetMeasurement::timestamp,
-                        measurement -> new SensorDataDTO(
-                                measurement.max(),
-                                measurement.avr(),
-                                measurement.min(),
-                                measurement.dir(),
-                                measurement.timestamp()
-                        )
+                        this::mapToDTO
                 )
         );
     }
 
+    @Override
+    public SensorDataDTO mapToDTO(NeduetMeasurement measurement) {
+        return new SensorDataDTO(
+                measurement.max(),
+                measurement.avr(),
+                measurement.min(),
+                measurement.dir(),
+                measurement.timestamp()
+        );
+    }
 
-    private SensorDataDTO getLastReading(List<NeduetMeasurement> data) {
+    @Override
+    public SensorDataDTO getLastReading(List<NeduetMeasurement> data) {
         var lastData = data.getLast();
 
         var windMax = lastData.max();
