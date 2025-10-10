@@ -11,7 +11,7 @@ public record SensorDataDTO(
         long timestamp
 ) {
 
-    static SensorDataDTO empty() {
+    public static SensorDataDTO empty() {
         return new SensorDataDTO(0F,0F,0F,0F, 0);
     }
 

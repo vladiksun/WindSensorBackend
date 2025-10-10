@@ -1,5 +1,6 @@
 package com.vb.wingfoil;
 
+import com.vb.wingfoil.provider.WindDataProvider;
 import io.micronaut.core.type.Argument;
 import io.micronaut.http.HttpHeaders;
 import io.micronaut.http.MediaType;
