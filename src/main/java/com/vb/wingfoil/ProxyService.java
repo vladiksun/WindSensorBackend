@@ -36,9 +36,9 @@ public class ProxyService {
 
     public static final int NUMBER_OF_READINGS_DEFAULT = 5;
 
-    private Argument<List<SpotDataDTO>> argument = Argument.listOf(SpotDataDTO.class);
+    private final Argument<List<SpotDataDTO>> argument = Argument.listOf(SpotDataDTO.class);
 
-    private Map<String, WindDataProvider> windDataProvidersByName;
+    private final Map<String, WindDataProvider<?>> windDataProvidersByName;
 
     private final CloseableHttpClient httpClient;
 
@@ -46,7 +46,7 @@ public class ProxyService {
 
     private final ObjectMapper objectMapper;
 
-    public ProxyService(List<WindDataProvider> windDataProviders,
+    public ProxyService(List<WindDataProvider<?>> windDataProviders,
                         WindSensorConfig windSensorConfig,
                         ObjectMapper objectMapper) {
         windDataProvidersByName = windDataProviders.stream()
@@ -78,7 +78,7 @@ public class ProxyService {
         }
 
         var provider = Option.of(windDataProvidersByName.get(providerCode))
-                .getOrElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerCode));;
+                .getOrElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerCode));
 
         var url = provider.getCallUrl(sensorId);
 
@@ -97,13 +97,13 @@ public class ProxyService {
         .onFailure(e -> logger.error("Failed to get sensor data", e));
     }
 
-    private static Try<List<SensorDataDTO>> handleResponse(Option<Integer> mayBeAreaReadingWindow,
-                                                           Option<Integer> maybeAreaNumberOfReadings,
-                                                           SensorDTO sensor,
-                                                           ClassicHttpResponse response,
-                                                           String url,
-                                                           WindDataProvider provider,
-                                                           String sensorId) throws IOException, ParseException {
+    private Try<List<SensorDataDTO>> handleResponse(Option<Integer> mayBeAreaReadingWindow,
+                                                    Option<Integer> maybeAreaNumberOfReadings,
+                                                    SensorDTO sensor,
+                                                    ClassicHttpResponse response,
+                                                    String url,
+                                                    WindDataProvider<?> provider,
+                                                    String sensorId) throws IOException, ParseException {
         int status = response.getCode();
         if (status < 200 || status >= 300) {
             throw new IOException("Upstream call failed with status " + status + " for " + url);
