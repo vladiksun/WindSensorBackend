@@ -70,6 +70,7 @@ public class ProxyService {
                                                   SensorDTO sensor) {
         var providerCode = sensor.provider();
         var sensorId = sensor.id();
+
         if (providerCode == null) {
             return Try.failure(new IllegalArgumentException("provider parameter must not be null"));
         }
@@ -85,41 +86,38 @@ public class ProxyService {
         var request = new HttpGet(url);
         request.addHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON);
 
-        return Try.of(() -> httpClient.execute(request, response -> handleResponse(
-                        mayBeAreaReadingWindow,
-                        maybeAreaNumberOfReadings,
-                        sensor,
-                        response,
-                        url,
-                        provider,
-                        sensorId)))
-        .flatMap(o -> o)
-        .onFailure(e -> logger.error("Failed to get sensor data", e));
+        var context = new ResponseHandlerContext(
+                mayBeAreaReadingWindow,
+                maybeAreaNumberOfReadings,
+                sensor,
+                url,
+                provider,
+                sensorId
+        );
+
+        return Try.of(() -> httpClient.execute(request, response -> handleResponse(context, response)))
+            .flatMap(o -> o)
+            .onFailure(e -> logger.error("Failed to get sensor data", e));
     }
 
-    private Try<List<SensorDataDTO>> handleResponse(Option<Integer> mayBeAreaReadingWindow,
-                                                    Option<Integer> maybeAreaNumberOfReadings,
-                                                    SensorDTO sensor,
-                                                    ClassicHttpResponse response,
-                                                    String url,
-                                                    WindDataProvider<?> provider,
-                                                    String sensorId) throws IOException, ParseException {
+    private Try<List<SensorDataDTO>> handleResponse(ResponseHandlerContext context,
+                                                    ClassicHttpResponse response) throws IOException, ParseException {
         int status = response.getCode();
         if (status < 200 || status >= 300) {
-            throw new IOException("Upstream call failed with status " + status + " for " + url);
+            throw new IOException("Upstream call failed with status " + status + " for " + context.url());
         }
         var entity = response.getEntity();
 
         var body = entity != null ? EntityUtils.toString(entity, StandardCharsets.UTF_8) : "";
 
-        var readingWindow = mayBeAreaReadingWindow.getOrElse(READING_WINDOW_SECONDS_DEFAULT);
-        var numberOfReadings =  maybeAreaNumberOfReadings.getOrElse(NUMBER_OF_READINGS_DEFAULT);
+        var readingWindow = context.readingWindow().getOrElse(READING_WINDOW_SECONDS_DEFAULT);
+        var numberOfReadings = context.numberOfReadings().getOrElse(NUMBER_OF_READINGS_DEFAULT);
 
         // take priority from the sensor meta if exists
-        readingWindow = Option.of(sensor.readingWindow()).getOrElse(readingWindow);
-        numberOfReadings = Option.of(sensor.numberOfReadings()).getOrElse(numberOfReadings);
+        readingWindow = Option.of(context.sensor().readingWindow()).getOrElse(readingWindow);
+        numberOfReadings = Option.of(context.sensor().numberOfReadings()).getOrElse(numberOfReadings);
 
-        return provider.extractTimedReadings(sensorId, body, readingWindow, numberOfReadings);
+        return context.provider().extractTimedReadings(context.sensorId(), body, readingWindow, numberOfReadings);
     }
 
     Try<List<SpotDataDTO>> requestSpotsData(boolean isDebug) {
