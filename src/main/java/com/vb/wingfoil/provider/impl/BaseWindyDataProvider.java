@@ -7,6 +7,7 @@ import io.micronaut.core.util.CollectionUtils;
 import io.micronaut.serde.ObjectMapper;
 import io.vavr.control.Try;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.ToLongFunction;
@@ -81,7 +82,7 @@ public abstract class BaseWindyDataProvider<T> implements WindDataProvider<T> {
         if (numberOfReadings < 2) {
             throw new IllegalArgumentException("numberOfReadings must be at least 2 to include first and last");
         }
-        var result = new java.util.ArrayList<M>();
+        var result = new ArrayList<M>();
         result.add(readings.getFirst()); // always include first
         double step = (double) (size - 1) / (numberOfReadings - 1);
         for (int i = 1; i < numberOfReadings - 1; i++) {
