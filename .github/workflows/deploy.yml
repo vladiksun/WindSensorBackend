@@ -27,20 +27,20 @@ jobs:
       - name: Create remote directory
         run: |
           sshpass -p "${{ secrets.SERVER_PASSWORD }}" \
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
+          ssh -p ${{ secrets.SERVER_PORT }} -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
           "mkdir -p /home/WindSensorBackend/"
 
       - name: Copy TAR file to server
         run: |
           sshpass -p "${{ secrets.SERVER_PASSWORD }}" \
-          scp -o StrictHostKeyChecking=no \
+          scp -P ${{ secrets.SERVER_PORT }} -o StrictHostKeyChecking=no \
           ./build/images/WindSensorBackend.tar \
           ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/home/WindSensorBackend/
 
       - name: Copy docker-compose.yml to server
         run: |
           sshpass -p "${{ secrets.SERVER_PASSWORD }}" \
-          scp -o StrictHostKeyChecking=no \
+          scp -P ${{ secrets.SERVER_PORT }} -o StrictHostKeyChecking=no \
           ./dev_setup/docker-compose.yml \
           ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/home/WindSensorBackend/
 
@@ -52,7 +52,7 @@ jobs:
       - name: Load image and restart container
         run: |
           sshpass -p "${{ secrets.SERVER_PASSWORD }}" \
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
+          ssh -p ${{ secrets.SERVER_PORT }} -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
           "cd /home/WindSensorBackend && \
            docker load -i WindSensorBackend.tar && \
            docker compose down && \
