@@ -22,7 +22,7 @@ dependencies {
     implementation("io.micronaut:micronaut-management")
     implementation("io.micronaut.micrometer:micronaut-micrometer-core")
 
-    implementation("io.vavr:vavr:0.9.0")
+    implementation("io.vavr:vavr:0.10.6")
     implementation("org.apache.httpcomponents.client5:httpclient5:5.5")
 
     runtimeOnly("ch.qos.logback:logback-classic")
@@ -36,8 +36,8 @@ application {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_24
-    targetCompatibility = JavaVersion.VERSION_24
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
 }
 
 
