@@ -36,8 +36,8 @@ application {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_24
-    targetCompatibility = JavaVersion.VERSION_24
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
 }
 
 
@@ -65,12 +65,12 @@ micronaut {
 }
 
 tasks.named("dockerfileNative") {
-    jdkVersion = "24"
+    jdkVersion = "25"
 }
 
 jib {
     from {
-        image = "eclipse-temurin:24-jre"   // or :24-jdk if you need full JDK
+        image = "eclipse-temurin:25-jre"   // or :25-jdk if you need full JDK
     }
     to {
         image = "windsensorbackend:latest"
