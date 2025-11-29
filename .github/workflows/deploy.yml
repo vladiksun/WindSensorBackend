@@ -18,6 +18,12 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
+      - name: Check server availability
+        run: |
+          sshpass -p "${{ secrets.SERVER_PASSWORD }}" \
+          ssh -p ${{ secrets.SERVER_PORT }} -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
+          "echo 'Server is reachable'"
+
       - name: Build with Gradle
         run: ./gradlew --no-daemon jibBuildTar
 
