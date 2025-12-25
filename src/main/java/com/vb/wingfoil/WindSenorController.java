@@ -37,6 +37,12 @@ public class WindSenorController {
         return proxyService.requestSpotsData(isDebug).get();
     }
 
+    @Get("/spots-data-dahab")
+    @ExecuteOn(TaskExecutors.VIRTUAL)
+    public List<SpotDataDTO> getSpotsDataDahab(@QueryValue(defaultValue = "false") boolean isDebug) {
+        return proxyService.requestSpotsDataForDahab(isDebug).get();
+    }
+
     @Error(global = true)
     public HttpResponse<JsonError> error(HttpRequest<?> request, Throwable e) {
         var error = new JsonError(e.getMessage())

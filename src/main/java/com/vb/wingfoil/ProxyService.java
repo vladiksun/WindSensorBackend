@@ -128,6 +128,16 @@ public class ProxyService {
             url = windSensorConfig.getSpotsDataUrl();
         }
 
+        return requestSpotsDataForURL(url);
+    }
+
+    Try<List<SpotDataDTO>> requestSpotsDataForDahab(boolean isDebug) {
+        var url = "https://raw.githubusercontent.com/vladiksun/WindSensorConfig/refs/heads/main/spots_dahab.json";
+
+        return requestSpotsDataForURL(url);
+    }
+
+    private Try<List<SpotDataDTO>> requestSpotsDataForURL(String url) {
         var mediaType = windSensorConfig.getSpotsDataMediaType();
 
         var request = new HttpGet(url);
@@ -135,17 +145,17 @@ public class ProxyService {
         request.addHeader(HttpHeaders.ACCEPT, mediaType);
 
         return Try.of(() -> httpClient.execute(request, response -> {
-            int status = response.getCode();
-            if (status < HttpStatus.SC_OK || status >= HttpStatus.SC_REDIRECTION) {
-                throw new IOException("Upstream call failed with status " + status + " for " + url);
-            }
-            var entity = response.getEntity();
+                    int status = response.getCode();
+                    if (status < HttpStatus.SC_OK || status >= HttpStatus.SC_REDIRECTION) {
+                        throw new IOException("Upstream call failed with status " + status + " for " + url);
+                    }
+                    var entity = response.getEntity();
 
-            var body = entity != null ? EntityUtils.toString(entity, StandardCharsets.UTF_8) : "";
+                    var body = entity != null ? EntityUtils.toString(entity, StandardCharsets.UTF_8) : "";
 
-            return parseSpotsDataResponse(body);
-        }))
-        .onFailure(e -> logger.error("Failed to get spots data", e));
+                    return parseSpotsDataResponse(body);
+                }))
+                .onFailure(e -> logger.error("Failed to get spots data", e));
     }
 
     private List<SpotDataDTO> parseSpotsDataResponse(String response) throws IOException {
