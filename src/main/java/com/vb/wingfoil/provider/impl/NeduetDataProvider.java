@@ -40,7 +40,9 @@ public class NeduetDataProvider extends BaseWindyDataProvider<NeduetMeasurement>
                                                          String response,
                                                          int readingWindowSeconds,
                                                          int numberOfReadings) throws IOException {
-        if (response == null || response.isBlank()) return Try.success(List.of(SensorDataDTO.empty()));
+        if (response == null || response.isBlank()) {
+            return Try.success(List.of(SensorDataDTO.empty()));
+        }
 
         List<NeduetStationInfo> stations = objectMapper.readValue(response, argument);
 

@@ -36,7 +36,9 @@ public class WindyDataProvider extends BaseWindyDataProvider<WindyMeasurement> {
                                                          String response,
                                                          int readingWindowSeconds,
                                                          int numberOfReadings) {
-        if (response == null || response.isBlank()) return Try.success(List.of(SensorDataDTO.empty()));
+        if (response == null || response.isBlank()) {
+            return Try.success(List.of(SensorDataDTO.empty()));
+        }
 
         return Try.of(() -> objectMapper.readValue(response, WindyStationApiResponse.class))
                 .map(windyResponse -> {
