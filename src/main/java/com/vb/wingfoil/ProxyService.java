@@ -103,7 +103,7 @@ public class ProxyService {
     private Try<List<SensorDataDTO>> handleResponse(ResponseHandlerContext context,
                                                     ClassicHttpResponse response) throws IOException, ParseException {
         int status = response.getCode();
-        if (status < 200 || status >= 300) {
+        if (status < HttpStatus.SC_OK || status >= HttpStatus.SC_REDIRECTION) {
             throw new IOException("Upstream call failed with status " + status + " for " + context.url());
         }
         var entity = response.getEntity();
