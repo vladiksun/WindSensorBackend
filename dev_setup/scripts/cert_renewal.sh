@@ -18,6 +18,24 @@ fi
 # shellcheck disable=SC1090
 source "$VARS_FILE"
 
+# Disable UFW to allow certbot ACME challenge (port 80/443)
+ufw_status_before=$(ufw status verbose 2>/dev/null | head -n1)
+ufw_was_enabled=false
+if echo "$ufw_status_before" | grep -q "active"; then
+  ufw_was_enabled=true
+  log "Disabling UFW temporarily for certificate renewal ..."
+  echo "y" | ufw disable
+fi
+
+# Ensure UFW is restored on any exit (error or success)
+cleanup() {
+  if [[ "$ufw_was_enabled" == "true" ]]; then
+    log "Re-enabling UFW ..."
+    echo "y" | ufw enable
+  fi
+}
+trap cleanup EXIT
+
 certbot renew
 
 # Regenerate PKCS12 keystore
