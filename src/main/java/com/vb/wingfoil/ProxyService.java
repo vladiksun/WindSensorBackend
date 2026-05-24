@@ -159,7 +159,9 @@ public class ProxyService {
     }
 
     private List<SpotDataDTO> parseSpotsDataResponse(String response) throws IOException {
-        if (response == null || response.isBlank()) return List.of();
+        if (response == null || response.isBlank()) {
+            return List.of();
+        }
 
         var result = objectMapper.readValue(response, argument);
 
