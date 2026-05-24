@@ -3,6 +3,7 @@ plugins {
     id("com.gradleup.shadow") version "8.3.7"
     id("io.micronaut.aot") version "4.5.4"
     id("com.google.cloud.tools.jib") version "3.4.5"
+    id("com.diffplug.spotless") version "8.5.1"
 }
 
 version = "0.1"
@@ -80,8 +81,24 @@ jib {
         // Change the filename/path as you like
         tar = file("$buildDir/images/${project.name}.tar")
     }
+}
+
+spotless {
+    java {
+        //target 'src/*/java/**/*.java'
+        target 'src/main/java/com/vb/wingfoil/ProxyService.java'
+        //target 'src/main/java/com/vb/wingfoil/provider/impl/NeduetDataProvider.java'
+        //targetExclude ''
+
+        removeUnusedImports()
+
+        eclipse().configFile('codeStyle/intellij_idea_code_style_eclipse_format.xml')
+        eclipse().configFile rootProject.file('codeStyle/intellij_idea_code_style_eclipse_format.xml')
+
+    }
 
 }
+
 
 
 
