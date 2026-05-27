@@ -85,8 +85,8 @@ jib {
 
 spotless {
     java {
-        target 'src/*/java/**/*.java'
-        //target 'src/main/java/com/vb/wingfoil/ProxyService.java'
+        //target 'src/*/java/**/*.java'
+        target 'src/main/java/com/vb/wingfoil/ProxyService.java'
         //target 'src/main/java/com/vb/wingfoil/provider/impl/NeduetDataProvider.java'
         //targetExclude ''
 
