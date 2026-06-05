@@ -7,8 +7,4 @@ import java.util.List;
 
 @Serdeable
 public record NeduetStationInfo(
-    @NonNull String name,
-    @NonNull String id,
-    @NonNull List<NeduetMeasurement> data
-) {
-}
+        @NonNull String name, @NonNull String id, @NonNull List<NeduetMeasurement> data) {}

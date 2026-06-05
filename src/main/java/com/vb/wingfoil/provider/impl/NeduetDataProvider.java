@@ -25,8 +25,8 @@ public class NeduetDataProvider extends BaseWindyDataProvider<NeduetMeasurement>
 
     private final Argument<List<NeduetStationInfo>> argument = Argument.listOf(NeduetStationInfo.class);
 
-    protected NeduetDataProvider(@Named(NAME) WindDataProviderConfig windDataProviderConfig,
-                                 ObjectMapper objectMapper) {
+    protected NeduetDataProvider(
+            @Named(NAME) WindDataProviderConfig windDataProviderConfig, ObjectMapper objectMapper) {
         super(windDataProviderConfig, objectMapper);
     }
 
@@ -36,10 +36,8 @@ public class NeduetDataProvider extends BaseWindyDataProvider<NeduetMeasurement>
     }
 
     @Override
-    public Try<List<SensorDataDTO>> extractTimedReadings(String sensorId,
-                                                         String response,
-                                                         int readingWindowSeconds,
-                                                         int numberOfReadings) throws IOException {
+    public Try<List<SensorDataDTO>> extractTimedReadings(
+            String sensorId, String response, int readingWindowSeconds, int numberOfReadings) throws IOException {
         if (response == null || response.isBlank()) {
             return Try.success(List.of(SensorDataDTO.empty()));
         }
@@ -49,32 +47,21 @@ public class NeduetDataProvider extends BaseWindyDataProvider<NeduetMeasurement>
         var data = stations.stream()
                 .filter(neduetStationInfo -> sensorId.equals(neduetStationInfo.id()))
                 .findFirst()
-                .map(NeduetStationInfo::data).orElse(List.of());
+                .map(NeduetStationInfo::data)
+                .orElse(List.of());
 
         return buildTimedReadings(
                 data,
                 readingWindowSeconds,
                 numberOfReadings,
                 this::getLastReading,
-                (d, rw, nr) -> getReadingsByInterval(
-                        d,
-                        rw,
-                        nr,
-                        NeduetMeasurement::timestamp,
-                        this::mapToDTO
-                )
-        );
+                (d, rw, nr) -> getReadingsByInterval(d, rw, nr, NeduetMeasurement::timestamp, this::mapToDTO));
     }
 
     @Override
     public SensorDataDTO mapToDTO(NeduetMeasurement measurement) {
         return new SensorDataDTO(
-                measurement.max(),
-                measurement.avr(),
-                measurement.min(),
-                measurement.dir(),
-                measurement.timestamp()
-        );
+                measurement.max(), measurement.avr(), measurement.min(), measurement.dir(), measurement.timestamp());
     }
 
     @Override

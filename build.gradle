@@ -85,16 +85,11 @@ jib {
 
 spotless {
     java {
-        //target 'src/*/java/**/*.java'
-        target 'src/main/java/com/vb/wingfoil/ProxyService.java'
-        //target 'src/main/java/com/vb/wingfoil/provider/impl/NeduetDataProvider.java'
-        //targetExclude ''
+        target 'src/*/java/**/*.java'
 
         removeUnusedImports()
 
-        //eclipse().configFile('codeStyle/intellij_idea_code_style_eclipse_format.xml')
-        eclipse().configFile rootProject.file('codeStyle/intellij_idea_code_style_eclipse_format.xml')
-
+        palantirJavaFormat()
     }
 
 }

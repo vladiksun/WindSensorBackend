@@ -6,7 +6,4 @@ import io.micronaut.serde.config.naming.SnakeCaseStrategy;
 
 @Serdeable(naming = SnakeCaseStrategy.class)
 public record WindyStationInfo(
-    @NonNull String name,
-    @NonNull String tzName
-) {
-}
+        @NonNull String name, @NonNull String tzName) {}

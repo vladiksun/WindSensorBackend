@@ -36,11 +36,12 @@ public abstract class BaseWindyDataProvider<T> implements WindDataProvider<T> {
         return url;
     }
 
-    protected <M> Try<List<SensorDataDTO>> buildTimedReadings(List<M> data,
-                                                              int readingWindowSeconds,
-                                                              int numberOfReadings,
-                                                              Function<List<M>, SensorDataDTO> lastReadingMapper,
-                                                              IntervalReader<M> intervalReader) {
+    protected <M> Try<List<SensorDataDTO>> buildTimedReadings(
+            List<M> data,
+            int readingWindowSeconds,
+            int numberOfReadings,
+            Function<List<M>, SensorDataDTO> lastReadingMapper,
+            IntervalReader<M> intervalReader) {
         if (CollectionUtils.isEmpty(data)) {
             return Try.success(List.of(SensorDataDTO.empty()));
         }
@@ -52,11 +53,12 @@ public abstract class BaseWindyDataProvider<T> implements WindDataProvider<T> {
         return Try.success(intervalReader.apply(data, readingWindowSeconds, numberOfReadings));
     }
 
-    protected <M> List<SensorDataDTO> getReadingsByInterval(List<M> data,
-                                                            int readingWindowSeconds,
-                                                            int numberOfReadings,
-                                                            ToLongFunction<M> timestampExtractor,
-                                                            Function<M, SensorDataDTO> mapper) {
+    protected <M> List<SensorDataDTO> getReadingsByInterval(
+            List<M> data,
+            int readingWindowSeconds,
+            int numberOfReadings,
+            ToLongFunction<M> timestampExtractor,
+            Function<M, SensorDataDTO> mapper) {
         int lastIndex = data.size() - 1;
         var windowReadings = new java.util.LinkedList<M>();
         long lastTimeStamp = timestampExtractor.applyAsLong(data.getLast());

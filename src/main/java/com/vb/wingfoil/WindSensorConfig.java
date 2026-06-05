@@ -56,5 +56,4 @@ public class WindSensorConfig {
             this.name = name;
         }
     }
-
 }

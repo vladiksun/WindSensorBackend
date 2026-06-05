@@ -8,7 +8,4 @@ import java.util.List;
 
 @Serdeable(naming = SnakeCaseStrategy.class)
 public record WindyResponse(
-    @NonNull WindyStationInfo info,
-    @NonNull List<WindyMeasurement> data
-) {
-}
+        @NonNull WindyStationInfo info, @NonNull List<WindyMeasurement> data) {}

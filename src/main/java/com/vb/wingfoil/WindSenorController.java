@@ -19,11 +19,12 @@ public class WindSenorController {
     @Post("/sensor-data")
     @ExecuteOn(TaskExecutors.VIRTUAL)
     public List<SensorDataDTO> getSensorData(@Body SensorRequestDTO sensorRequest) {
-        return proxyService.requestTimedReadings(
-                Option.of(sensorRequest.readingWindow()),
-                Option.of(sensorRequest.numberOfReadings()),
-                sensorRequest.sensor()
-                ).get();
+        return proxyService
+                .requestTimedReadings(
+                        Option.of(sensorRequest.readingWindow()),
+                        Option.of(sensorRequest.numberOfReadings()),
+                        sensorRequest.sensor())
+                .get();
     }
 
     @Get("/spots-data")
@@ -37,5 +38,4 @@ public class WindSenorController {
     public List<SpotDataDTO> getSpotsDataDahab(@QueryValue(defaultValue = "false") boolean isDebug) {
         return proxyService.requestSpotsDataForDahab(isDebug).get();
     }
-
 }

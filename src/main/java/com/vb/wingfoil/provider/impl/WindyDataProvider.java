@@ -21,8 +21,7 @@ public class WindyDataProvider extends BaseWindyDataProvider<WindyMeasurement> {
 
     private static final Logger log = LoggerFactory.getLogger(WindyDataProvider.class);
 
-    protected WindyDataProvider(@Named(NAME) WindDataProviderConfig windDataProviderConfig,
-                                ObjectMapper objectMapper) {
+    protected WindyDataProvider(@Named(NAME) WindDataProviderConfig windDataProviderConfig, ObjectMapper objectMapper) {
         super(windDataProviderConfig, objectMapper);
     }
 
@@ -32,10 +31,8 @@ public class WindyDataProvider extends BaseWindyDataProvider<WindyMeasurement> {
     }
 
     @Override
-    public Try<List<SensorDataDTO>> extractTimedReadings(String sensorId,
-                                                         String response,
-                                                         int readingWindowSeconds,
-                                                         int numberOfReadings) {
+    public Try<List<SensorDataDTO>> extractTimedReadings(
+            String sensorId, String response, int readingWindowSeconds, int numberOfReadings) {
         if (response == null || response.isBlank()) {
             return Try.success(List.of(SensorDataDTO.empty()));
         }
@@ -43,7 +40,8 @@ public class WindyDataProvider extends BaseWindyDataProvider<WindyMeasurement> {
         return Try.of(() -> objectMapper.readValue(response, WindyStationApiResponse.class))
                 .map(windyResponse -> {
                     if (!"success".equals(windyResponse.status())) {
-                        return Try.<List<SensorDataDTO>>failure(new RuntimeException("Windy provider returned an error. Full response: %s".formatted(response)));
+                        return Try.<List<SensorDataDTO>>failure(new RuntimeException(
+                                "Windy provider returned an error. Full response: %s".formatted(response)));
                     }
 
                     var data = windyResponse.response().data();
@@ -52,19 +50,14 @@ public class WindyDataProvider extends BaseWindyDataProvider<WindyMeasurement> {
                             readingWindowSeconds,
                             numberOfReadings,
                             this::getLastReading,
-                            (d, rw, nr) -> getReadingsByInterval(
-                                    d,
-                                    rw,
-                                    nr,
-                                    WindyMeasurement::timestamp,
-                                    this::mapToDTO
-                            )
-                    );
-        })
-        .recover(throwable -> {
-                log.error("Error deserializing Windy provider response: {}", response, throwable);
-                return Try.success(List.of(SensorDataDTO.empty()));
-        }).flatMap(o -> o);
+                            (d, rw, nr) ->
+                                    getReadingsByInterval(d, rw, nr, WindyMeasurement::timestamp, this::mapToDTO));
+                })
+                .recover(throwable -> {
+                    log.error("Error deserializing Windy provider response: {}", response, throwable);
+                    return Try.success(List.of(SensorDataDTO.empty()));
+                })
+                .flatMap(o -> o);
     }
 
     @Override
@@ -74,8 +67,7 @@ public class WindyDataProvider extends BaseWindyDataProvider<WindyMeasurement> {
                 measurement.windAvg(),
                 measurement.windMin(),
                 measurement.windDirection(),
-                measurement.timestamp()
-        );
+                measurement.timestamp());
     }
 
     @Override

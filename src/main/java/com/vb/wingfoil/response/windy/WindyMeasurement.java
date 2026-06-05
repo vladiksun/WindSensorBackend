@@ -5,13 +5,11 @@ import io.micronaut.serde.config.naming.SnakeCaseStrategy;
 
 @Serdeable(naming = SnakeCaseStrategy.class)
 public record WindyMeasurement(
-    float windAvg,
-    float windMin,
-    float windMax,
-    float windDirection,
-    long timestamp,
-    float pressure,
-    float temperature,
-    float humidity
-) {
-}
+        float windAvg,
+        float windMin,
+        float windMax,
+        float windDirection,
+        long timestamp,
+        float pressure,
+        float temperature,
+        float humidity) {}

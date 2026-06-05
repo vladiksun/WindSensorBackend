@@ -17,9 +17,7 @@ class WindSensorBackendTest {
     void testSpotDataFormat() {
         var spots = proxyService.requestSpotsData(false).get();
         assertEquals(2, spots.size());
-        assertTrue(spots.get(0).sensors().stream().anyMatch(sensorDTO ->
-                sensorDTO.id().equals("1chipru_a4e57cbb42cc"))
-        );
+        assertTrue(spots.get(0).sensors().stream()
+                .anyMatch(sensorDTO -> sensorDTO.id().equals("1chipru_a4e57cbb42cc")));
     }
-
 }

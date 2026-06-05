@@ -46,18 +46,17 @@ public class ProxyService {
 
     private final ObjectMapper objectMapper;
 
-    public ProxyService(List<WindDataProvider<?>> windDataProviders,
-                        WindSensorConfig windSensorConfig,
-                        ObjectMapper objectMapper) {
+    public ProxyService(
+            List<WindDataProvider<?>> windDataProviders, WindSensorConfig windSensorConfig, ObjectMapper objectMapper) {
         windDataProvidersByName = windDataProviders.stream()
-            .filter(Objects::nonNull)
-            .filter(p -> p.getName() != null && !p.getName().isBlank())
-            .collect(Collectors.toMap(
-                WindDataProvider::getName,        // key mapper
-                Function.identity(),              // value mapper (the provider itself)
-                (existing, replacement) -> existing, // merge strategy on duplicate keys: keep the first
-                HashMap::new                // preserves iteration order of the stream
-            ));
+                .filter(Objects::nonNull)
+                .filter(p -> p.getName() != null && !p.getName().isBlank())
+                .collect(Collectors.toMap(
+                        WindDataProvider::getName, // key mapper
+                        Function.identity(), // value mapper (the provider itself)
+                        (existing, replacement) -> existing, // merge strategy on duplicate keys: keep the first
+                        HashMap::new // preserves iteration order of the stream
+                        ));
 
         this.windSensorConfig = windSensorConfig;
         this.objectMapper = objectMapper;
@@ -65,9 +64,8 @@ public class ProxyService {
         httpClient = HttpClients.createDefault();
     }
 
-    Try<List<SensorDataDTO>> requestTimedReadings(Option<Integer> mayBeAreaReadingWindow,
-                                                  Option<Integer> maybeAreaNumberOfReadings,
-                                                  SensorDTO sensor) {
+    Try<List<SensorDataDTO>> requestTimedReadings(
+            Option<Integer> mayBeAreaReadingWindow, Option<Integer> maybeAreaNumberOfReadings, SensorDTO sensor) {
         var providerCode = sensor.provider();
         var sensorId = sensor.id();
 
@@ -79,7 +77,7 @@ public class ProxyService {
         }
 
         var provider = Option.of(windDataProvidersByName.get(providerCode))
-            .getOrElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerCode));
+                .getOrElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerCode));
 
         var url = provider.getCallUrl(sensorId);
 
@@ -87,21 +85,15 @@ public class ProxyService {
         request.addHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON);
 
         var context = new ResponseHandlerContext(
-            mayBeAreaReadingWindow,
-            maybeAreaNumberOfReadings,
-            sensor,
-            url,
-            provider,
-            sensorId
-        );
+                mayBeAreaReadingWindow, maybeAreaNumberOfReadings, sensor, url, provider, sensorId);
 
         return Try.of(() -> httpClient.execute(request, response -> handleResponse(context, response)))
-            .flatMap(o -> o)
-            .onFailure(e -> logger.error("Failed to get sensor data", e));
+                .flatMap(o -> o)
+                .onFailure(e -> logger.error("Failed to get sensor data", e));
     }
 
-    private Try<List<SensorDataDTO>> handleResponse(ResponseHandlerContext context,
-                                                    ClassicHttpResponse response) throws IOException, ParseException {
+    private Try<List<SensorDataDTO>> handleResponse(ResponseHandlerContext context, ClassicHttpResponse response)
+            throws IOException, ParseException {
         int status = response.getCode();
         if (status < HttpStatus.SC_OK || status >= HttpStatus.SC_REDIRECTION) {
             throw new IOException("Upstream call failed with status " + status + " for " + context.url());
@@ -145,17 +137,17 @@ public class ProxyService {
         request.addHeader(HttpHeaders.ACCEPT, mediaType);
 
         return Try.of(() -> httpClient.execute(request, response -> {
-                int status = response.getCode();
-                if (status < HttpStatus.SC_OK || status >= HttpStatus.SC_REDIRECTION) {
-                    throw new IOException("Upstream call failed with status " + status + " for " + url);
-                }
-                var entity = response.getEntity();
+                    int status = response.getCode();
+                    if (status < HttpStatus.SC_OK || status >= HttpStatus.SC_REDIRECTION) {
+                        throw new IOException("Upstream call failed with status " + status + " for " + url);
+                    }
+                    var entity = response.getEntity();
 
-                var body = entity != null ? EntityUtils.toString(entity, StandardCharsets.UTF_8) : "";
+                    var body = entity != null ? EntityUtils.toString(entity, StandardCharsets.UTF_8) : "";
 
-                return parseSpotsDataResponse(body);
-            }))
-            .onFailure(e -> logger.error("Failed to get spots data", e));
+                    return parseSpotsDataResponse(body);
+                }))
+                .onFailure(e -> logger.error("Failed to get spots data", e));
     }
 
     private List<SpotDataDTO> parseSpotsDataResponse(String response) throws IOException {

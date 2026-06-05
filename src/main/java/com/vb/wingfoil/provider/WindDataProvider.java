@@ -14,10 +14,8 @@ public interface WindDataProvider<T> {
 
     String getCallUrl(String sensorId);
 
-    Try<List<SensorDataDTO>> extractTimedReadings(String sensorId,
-                                                  String response,
-                                                  int readingWindowSeconds,
-                                                  int numberOfReadings) throws IOException;
+    Try<List<SensorDataDTO>> extractTimedReadings(
+            String sensorId, String response, int readingWindowSeconds, int numberOfReadings) throws IOException;
 
     SensorDataDTO mapToDTO(T measurement);
 

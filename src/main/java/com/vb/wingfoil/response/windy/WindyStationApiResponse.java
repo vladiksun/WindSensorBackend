@@ -6,8 +6,4 @@ import io.micronaut.serde.config.naming.SnakeCaseStrategy;
 
 @Serdeable(naming = SnakeCaseStrategy.class)
 public record WindyStationApiResponse(
-    @NonNull String status,
-    @NonNull WindyResponse response,
-    long time
-) {
-}
+        @NonNull String status, @NonNull WindyResponse response, long time) {}

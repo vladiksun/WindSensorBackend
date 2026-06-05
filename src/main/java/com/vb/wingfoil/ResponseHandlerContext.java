@@ -13,6 +13,4 @@ public record ResponseHandlerContext(
         SensorDTO sensor,
         String url,
         WindDataProvider<?> provider,
-        String sensorId
-) {
-}
+        String sensorId) {}

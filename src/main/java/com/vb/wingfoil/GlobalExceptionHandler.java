@@ -14,10 +14,8 @@ public class GlobalExceptionHandler implements ExceptionHandler<Throwable, HttpR
 
     @Override
     public HttpResponse<JsonError> handle(HttpRequest request, Throwable exception) {
-        var error = new JsonError(exception.getMessage())
-                .link(Link.SELF, Link.of(request.getUri()));
+        var error = new JsonError(exception.getMessage()).link(Link.SELF, Link.of(request.getUri()));
 
-        return HttpResponse.<JsonError>serverError()
-                .body(error);
+        return HttpResponse.<JsonError>serverError().body(error);
     }
 }
