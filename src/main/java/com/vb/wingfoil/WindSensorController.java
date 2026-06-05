@@ -8,11 +8,11 @@ import io.vavr.control.Option;
 import java.util.List;
 
 @Controller
-public class WindSenorController {
+public class WindSensorController {
 
     private final ProxyService proxyService;
 
-    public WindSenorController(ProxyService proxyService) {
+    public WindSensorController(ProxyService proxyService) {
         this.proxyService = proxyService;
     }
 
