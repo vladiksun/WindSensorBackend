@@ -15,8 +15,10 @@ repositories {
 
 dependencies {
     annotationProcessor("io.micronaut:micronaut-http-validation")
+    annotationProcessor("io.micronaut.openapi:micronaut-openapi")
     annotationProcessor("io.micronaut.serde:micronaut-serde-processor")
 
+    implementation("io.micronaut.openapi:micronaut-openapi")
     implementation("io.micronaut.serde:micronaut-serde-jackson")
     implementation("io.micronaut.rxjava3:micronaut-rxjava3")
 //    implementation("io.micronaut.security:micronaut-security")
