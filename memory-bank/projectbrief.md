@@ -1,16 +1,29 @@
 # Project Brief: WindSensorBackend
 
+## Overview
+A REST API backend service that aggregates wind speed and direction data from multiple wind sensor providers. Built for wind sports enthusiasts (wingfoil, kitesurfing) who need real-time wind condition data from various sensor locations.
+
 ## Core Requirements
-The goal of this project is to provide a REST API that acts as a proxy for fetching wind speed and direction data from various wind sensors.
+- Fetch wind sensor data from external providers (Windy API, Neduet API)
+- Fetch spot/location data from external configuration repository
+- Provide a unified REST API for consuming wind data across providers
+- Support configurable reading windows and number of readings per request
+- Deployable as a Docker container
+- Configurable via environment variables for production deployments
 
-## Objectives
-- Provide a unified interface to access wind data from different sensor providers.
-- Support fetching timed readings for specific sensors.
-- Support fetching "spots" data (likely locations with sensors) from a configuration source.
-- Implement a provider-based architecture to allow easy addition of new wind data sources.
+## Key Goals
+- Abstract away provider-specific API differences behind a unified interface
+- Enable easy addition of new wind data providers
+- Keep configuration (spots, providers) externalized and maintainable
+- Low-latency responses using Java virtual threads
 
-## Key Features
-- **Sensor Data Proxy**: Endpoint `/sensor-data` to get readings for a specific sensor.
-- **Spots Data**: Endpoints `/spots-data` and `/spots-data-dahab` to retrieve location/spot information.
-- **Dynamic Provider Resolution**: Use of `WindDataProvider` implementations to handle different upstream API formats.
-- **Virtual Threads**: Utilization of Java Virtual Threads (`TaskExecutors.VIRTUAL`) for handling I/O-bound proxy requests.
+## Scope
+- Backend API only (no frontend)
+- Two endpoints: sensor data retrieval and spots data retrieval
+- Provider plugin architecture for extensibility
+- External configuration stored in a separate GitHub repository (WindSensorConfig)
+
+## Out of Scope
+- Data storage/persistence (stateless proxy)
+- User authentication (security is optional/configurable)
+- Real-time push (WebSocket/SSE) - currently request/response only

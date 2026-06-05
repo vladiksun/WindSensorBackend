@@ -1,22 +1,43 @@
-# Progress: WindSensorBackend
-
-## Current Status
-The project has its core proxy functionality implemented and the Memory Bank has been fully initialized.
+# Progress
 
 ## What Works
-- **Unified Sensor API**: Ability to fetch wind data from multiple providers via a single endpoint.
-- **Dynamic Provider Resolution**: System correctly resolves the appropriate `WindDataProvider` based on the sensor's provider code.
-- **Spots Configuration**: Successful retrieval of spot/location data from remote JSON sources.
-- **Concurrency**: Integration of Java Virtual Threads for non-blocking I/O.
-- **Error Handling**: Robust failure management using Vavr's `Try` monad.
+- Core Micronaut application boots and runs on port 8080
+- REST API endpoints functional:
+  - `POST /sensor-data` - Fetches wind readings from providers
+  - `GET /spots-data` - Fetches available sensor locations
+  - `GET /spots-data-dahab` - Fetches Dahab-specific locations
+- Provider plugin system with Windy and Neduet implementations
+- Configuration binding from `application.yml`
+- External spots configuration loaded from GitHub
+- Docker image building via Jib plugin
+- Code formatting via Spotless plugin
+- Metrics and health check endpoints enabled
+- Virtual threads for I/O-bound request handling
 
 ## What's Left to Build
-- **Additional Providers**: Integration of more `WindDataProvider` implementations for other sensor brands.
-- **Caching**: Implementation of a caching layer to reduce the number of upstream API calls and improve response times.
-- **Validation**: Enhanced validation for incoming request parameters.
-- **Testing**: Expansion of the test suite to cover more edge cases and provider implementations.
+- [ ] Test coverage (test directory appears minimal)
+- [ ] Additional wind data providers as needed
+- [ ] Caching layer for frequently requested data
+- [ ] Rate limiting for external API calls
+- [ ] Comprehensive error response format
+- [ ] API documentation (OpenAPI/Swagger)
+- [ ] CI/CD pipeline configuration
+
+## Current Status
+- **Phase**: Early development / MVP
+- **Version**: 0.1
+- **Core functionality**: Implemented
+- **Testing**: Minimal
+- **Documentation**: Memory bank initialized
+
+## Known Issues
+- None identified yet during initial review
+- SSL configuration requires keystore for production (`SSL_ENABLED=true` by default)
+- Security module is commented out but configurable
 
 ## Evolution of Project Decisions
-- **Architecture**: Shifted towards a provider-based pattern to ensure the system is open for extension but closed for modification.
-- **Execution Model**: Adopted Virtual Threads to handle the high-latency nature of external HTTP calls without the complexity of fully asynchronous reactive programming.
-- **Config Management**: Decided on remote JSON files for spots data to allow updates without redeploying the service.
+- Started with Micronaut 4.x for AOT and fast startup
+- Chose Java 25 for virtual threads support
+- Selected Vavr for functional error handling over traditional exceptions
+- Externalized spots configuration to separate GitHub repo for easy maintenance
+- Stateless design chosen to simplify deployment and scaling
