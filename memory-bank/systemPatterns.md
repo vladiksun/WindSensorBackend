@@ -26,6 +26,7 @@ The application does not store any data. It acts as a real-time proxy that:
 - Each provider implements: URL generation, response parsing, data mapping
 - Providers are discovered via Micronaut's DI and registered in a map by name
 - New providers can be added by implementing the interface
+- Abstract base class `BaseWindyDataProvider<T>` provides shared logic for Windy provider variants
 
 ### 3. Functional Error Handling with Vavr
 - `Try<T>` for operations that can fail (replaces try-catch)
@@ -39,18 +40,29 @@ All data transfer objects are immutable Java records:
 - `SensorDataDTO` - normalized wind reading output
 - `SpotDataDTO` - location/spot information
 
+### 5. Global Exception Handling
+- `GlobalExceptionHandler` is a dedicated `@Controller` bean
+- Handles exceptions centrally and returns structured error responses
+- Replaces ad-hoc exception handling in controller methods
+
 ## Component Relationships
 
 ### WindSensorController
 - Entry point for all HTTP requests
 - Three endpoints: `/sensor-data` (POST), `/spots-data` (GET), `/spots-data-dahab` (GET)
 - Uses `@ExecuteOn(TaskExecutors.VIRTUAL)` for virtual threads
+- Supports `isDebug` query parameter for spots endpoints
 
 ### ProxyService
 - Central orchestrator for all data fetching
 - Maintains a map of `WindDataProvider` instances by provider code
 - Handles HTTP communication with external providers via Apache HttpClient5
 - Routes requests to correct provider based on sensor metadata
+- Methods:
+  - `requestTimedReadings(...)` - Fetches wind data from providers
+  - `requestSpotsData(boolean isDebug)` - Fetches spots from configured URL (or test URL in debug)
+  - `requestSpotsDataForDahab(boolean isDebug)` - Fetches Dahab spots from fixed URL
+  - `parseSpotsDataResponse(String)` - Deserializes JSON to SpotDataDTO list
 
 ### WindDataProvider Interface
 Generic interface parameterized by response type `T`:
@@ -60,6 +72,12 @@ Generic interface parameterized by response type `T`:
 - `extractTimedReadings(...)` - parses raw response, returns normalized DTOs
 - `mapToDTO(T)` - maps provider-specific measurement to SensorDataDTO
 - `getLastReading(List<T>)` - extracts most recent reading
+
+### BaseWindyDataProvider (Abstract)
+Common base for Windy provider variants:
+- `buildTimedReadings()` - orchestrates reading extraction
+- `getReadingsByInterval()` - filters readings within time window
+- `reduceWindowReadings()` - reduces readings to target count (preserving first/last, evenly sampling)
 
 ### WindSensorConfig
 - Micronaut configuration bean bound from `application.yml`
@@ -77,7 +95,7 @@ Generic interface parameterized by response type `T`:
 
 ### Spots Data Request Flow:
 1. Client GETs `/spots-data` or `/spots-data-dahab`
-2. Service fetches JSON from GitHub raw content URL
+2. Service fetches JSON from GitHub raw content URL (or test URL in debug mode)
 3. JSON is deserialized to `List<SpotDataDTO>` using Jackson
 4. List returned to client
 
@@ -96,7 +114,10 @@ com.vb.wingfoil
 ├── SpotDataDTO.java              # Location data record
 ├── provider/
 │   └── WindDataProvider.java     # Provider interface
-│   └── impl/                     # Provider implementations
+│   └── impl/
+│       └── BaseWindyDataProvider.java  # Abstract base for Windy variants
+│       └── WindyDataProvider.java      # Windy provider implementation
+│       └── NeduetDataProvider.java     # Neduet provider implementation
 └── response/
     ├── windy/                    # Windy-specific response models
     └── neduet/                   # Neduet-specific response models

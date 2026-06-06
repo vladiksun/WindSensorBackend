@@ -18,9 +18,18 @@
 - **Micronaut RxJava3** - Reactive streams support
 - **Micronaut Management** - Health checks, metrics endpoints
 - **Micronaut Micrometer** - Metrics collection
+- **Micronaut OpenAPI** - API documentation, Swagger UI generation (added 2026-06-05)
+- **Micronaut HTTP Validation** - Request validation via annotation processor
 - **Vavr 0.10.6** - Functional programming (Try, Option, Either)
 - **Apache HttpClient5** - HTTP client for external API calls
 - **Logback** - Logging framework
+
+### Test Dependencies (Added but Not Used)
+- **Micronaut HTTP Client** - HTTP testing support
+- **Micronaut Test RestAssured** - Integration testing framework
+- **Testcontainers JUnit Jupiter 1.21.4** - Container-based testing
+- **Testcontainers MockServer 1.21.4** - API mocking in containers
+- **MockServer Client Java 6.1.0** - Client library for MockServer
 
 ### Optional/Commented
 - **Micronaut Security** - Present in dependencies but commented out, configurable via `SECURITY_ENABLED`
@@ -62,7 +71,10 @@ Image tagged as `windsensorbackend:latest`
 | `SPOTS_DATA_MEDIA_TYPE` | `text/plain` | Media type for spots data |
 
 ### Configuration File
-`src/main/resources/application.yml` - Main configuration with Micronaut settings and wind sensor provider URLs
+`src/main/resources/application.yml` - Main configuration with Micronaut settings, OpenAPI views, and wind sensor provider URLs
+
+### Test Configuration
+`src/test/resources/application-test.yml` - Minimal test config (port 8080, SSL disabled)
 
 ## Technical Constraints
 - Java 25 required (virtual threads, pattern matching features)
@@ -77,6 +89,7 @@ compile:
   - micronaut-rxjava3 (reactive)
   - micronaut-management (ops)
   - micronaut-micrometer-core (metrics)
+  - micronaut-openapi (API docs/Swagger UI)
   - vavr (functional)
   - httpclient5 (HTTP client)
 
@@ -86,3 +99,7 @@ runtime:
 
 test:
   - micronaut-http-client (testing)
+  - micronaut-test-rest-assured (testing)
+  - testcontainers:junit-jupiter (container testing)
+  - testcontainers:mockserver (API mocking)
+  - mockserver-client-java (mock client)
