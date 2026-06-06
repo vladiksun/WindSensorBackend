@@ -1,0 +1,7 @@
+src/main/java/com/vb/wingfoil/WindSenorController.java
+I want to introduce Open API and swagger ui according to micronaut doc.
+To complete this task you MUST refer to https://micronaut-projects.github.io/micronaut-openapi/latest/guide/index.html
+Read all documentation.
+I do not want to use Swagger Annotations.
+The open api should be generated based on existing controller.
+Follow your custom instructions.
