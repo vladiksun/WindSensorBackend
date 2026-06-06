@@ -32,6 +32,12 @@ dependencies {
     runtimeOnly("org.yaml:snakeyaml")
 
     testImplementation("io.micronaut:micronaut-http-client")
+    testImplementation("io.micronaut.test:micronaut-test-rest-assured")
+
+    testImplementation("org.testcontainers:junit-jupiter:1.21.4")
+
+    testImplementation("org.testcontainers:mockserver:1.21.4")
+    testImplementation("org.mock-server:mockserver-client-java:6.1.0")
 }
 
 application {
