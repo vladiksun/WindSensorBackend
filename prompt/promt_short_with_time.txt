@@ -27,9 +27,17 @@ After you finished you should write to the time_track.txt file the finish time a
 
 Caveats
 
-Micronaut BOM is forcing `json-schema-validator` from `1.0.76` to `3.0.2`,
+Micronaut BOM is forcing `json-schema-validator` from `xxxxx` to `3.0.2`,
 but mockserver 5.15.0 needs the `1.x` API (`SpecVersion$VersionFlag`).
-We need to force version `1.0.76`.
+We need to force version `xxxxx`.
+
+
+configurations.all {
+    resolutionStrategy {
+        force "com.networknt:json-schema-validator:xxxxx"
+    }
+}
+
 
 
 
