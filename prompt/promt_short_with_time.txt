@@ -1,0 +1,36 @@
+For this application cover `@Get("/spots-data")` endpoint in src/main/java/com/vb/wingfoil/WindSensorController.java
+with integration tests.
+
+You MUST NOT mock service layer.
+
+To complete this task you MUST read and use example https://github.com/micronaut-projects/micronaut-guides/blob/master/guides/testing-rest-api-integrations-using-mockserver/java/src/test/java/example/micronaut/AlbumControllerMockServerTest.java
+
+To complete this task you MUST read and follow https://micronaut-projects.github.io/micronaut-test/4.6.0/guide/#junit5
+
+To complete this task you MUST use testcontainers Mockserver Module.
+To complete this task you MUST read and follow example to https://java.testcontainers.org/modules/mockserver
+
+To complete this task you MUST use REST Assured.
+To complete this task you MUST read and follow https://micronaut-projects.github.io/micronaut-test/4.6.0/guide/#restAssured
+
+For all other endpoint you MUST mock data via MockServer.
+
+To complete this task you MUST run tests you created.
+
+All tests should pass.
+
+Before you start implementing the task you should create file named time_track.txt inside the project.
+Before you start write to the time_track.txt file the starting time.
+After you finished you should write to the time_track.txt file the finish time and the total time it took to complete the task.
+
+##########################################################
+
+Caveats
+
+Micronaut BOM is forcing `json-schema-validator` from `1.0.76` to `3.0.2`,
+but mockserver 5.15.0 needs the `1.x` API (`SpecVersion$VersionFlag`).
+We need to force version `1.0.76`.
+
+
+
+

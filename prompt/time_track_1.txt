@@ -1,0 +1,6 @@
+Starting Time: 2026-06-07 15:46 MSK (UTC+3)
+
+Task: Cover GET /spots-data endpoint with integration tests using Testcontainers MockServer Module and REST Assured
+
+Finish Time: 2026-06-07 15:56 MSK (UTC+3)
+Total Time: ~10 minutes
