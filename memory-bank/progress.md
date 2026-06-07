@@ -1,7 +1,7 @@
 # Progress
 
 ## What Works
-- Core Micronaut application boots and runs on port 8080
+- Core Micronaut 5 application boots and runs on port 8080
 - REST API endpoints functional:
   - `POST /sensor-data` - Fetches wind readings from providers
   - `GET /spots-data` - Fetches available sensor locations (with optional `isDebug` flag)
@@ -17,6 +17,7 @@
 - OpenAPI/Swagger UI enabled at `/swagger/**` and `/swagger-ui/**`
 - Global exception handling via dedicated `GlobalExceptionHandler` bean
 - Test infrastructure dependencies configured (testcontainers, MockServer)
+- Micronaut 5 migration completed successfully
 
 ## What's Left to Build
 - [ ] Test implementation (testcontainers + MockServer dependencies added, but no test classes exist)
@@ -30,10 +31,11 @@
 ## Current Status
 - **Phase**: Active development / MVP+
 - **Version**: 0.1
+- **Framework**: Micronaut 5.0.0 (migrated from 4.x)
 - **Core functionality**: Implemented and stable
 - **Testing**: Infrastructure prepared, tests not written (0% coverage)
 - **Documentation**: Memory bank maintained, OpenAPI support added
-- **Recent activity**: Test refactoring, OpenAPI integration, ongoing code refactoring
+- **Recent activity**: Micronaut 5 migration, code refactoring, test infrastructure preparation
 
 ## Known Issues
 - Test Java directory is completely empty (`src/test/java/com/vb/wingfoil/` has no files)
@@ -43,6 +45,7 @@
 
 ## Evolution of Project Decisions
 - Started with Micronaut 4.x for AOT and fast startup
+- Migrated to Micronaut 5.0.0 for latest framework improvements (2026-06-07)
 - Chose Java 25 for virtual threads support
 - Selected Vavr for functional error handling over traditional exceptions
 - Externalized spots configuration to separate GitHub repo for easy maintenance
@@ -50,3 +53,4 @@
 - Added OpenAPI support for API documentation (2026-06-05)
 - Added testcontainers + MockServer for test infrastructure (2026-06-06)
 - Moved exception handling to dedicated `@Controller` bean for cleaner separation
+- MockServer client downgraded from 6.1.0 to 5.15.0 for compatibility

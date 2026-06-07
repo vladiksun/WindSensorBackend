@@ -3,15 +3,17 @@
 ## Technologies Used
 
 ### Core Framework
-- **Micronaut 4.x** - Lightweight Java framework with compile-time DI, AOT optimization
+- **Micronaut 5.x** - Lightweight Java framework with compile-time DI, AOT optimization (migrated from 4.x to 5.0.0)
 - **Java 25** - Latest LTS with virtual threads as the default execution model
 - **Netty** - Reactive HTTP server runtime
 
 ### Build & Tooling
 - **Gradle** (Groovy DSL) - Build automation
-- **Shadow Plugin** - Fat JAR creation
-- **Jib Plugin** - Docker image building (eclipse-temurin:25-jre base)
-- **Spotless Plugin** - Code formatting (Palantir Java Format)
+- **Shadow Plugin 9.4.1** - Fat JAR creation
+- **Jib Plugin 3.4.5** - Docker image building (eclipse-temurin:25-jre base)
+- **Spotless Plugin 8.5.1** - Code formatting (Palantir Java Format)
+- **Micronaut Application Plugin 5.0.0** - Micronaut 5 application support
+- **Micronaut AOT Plugin 5.0.0** - AOT optimization support
 
 ### Dependencies
 - **Micronaut Serde Jackson** - JSON serialization/deserialization
@@ -21,15 +23,14 @@
 - **Micronaut OpenAPI** - API documentation, Swagger UI generation (added 2026-06-05)
 - **Micronaut HTTP Validation** - Request validation via annotation processor
 - **Vavr 0.10.6** - Functional programming (Try, Option, Either)
-- **Apache HttpClient5** - HTTP client for external API calls
+- **Apache HttpClient5 5.5** - HTTP client for external API calls
 - **Logback** - Logging framework
 
 ### Test Dependencies (Added but Not Used)
 - **Micronaut HTTP Client** - HTTP testing support
 - **Micronaut Test RestAssured** - Integration testing framework
-- **Testcontainers JUnit Jupiter 1.21.4** - Container-based testing
-- **Testcontainers MockServer 1.21.4** - API mocking in containers
-- **MockServer Client Java 6.1.0** - Client library for MockServer
+- **Testcontainers MockServer** - Container-based API mocking
+- **MockServer Client Java 5.15.0** - Client library for MockServer (downgraded from 6.1.0 for compatibility)
 
 ### Optional/Commented
 - **Micronaut Security** - Present in dependencies but commented out, configurable via `SECURITY_ENABLED`
@@ -100,6 +101,5 @@ runtime:
 test:
   - micronaut-http-client (testing)
   - micronaut-test-rest-assured (testing)
-  - testcontainers:junit-jupiter (container testing)
-  - testcontainers:mockserver (API mocking)
-  - mockserver-client-java (mock client)
+  - testcontainers:mockserver (container testing)
+  - mockserver-client-java:5.15.0 (mock client)

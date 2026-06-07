@@ -1,27 +1,37 @@
 # Product Context
 
 ## Why This Project Exists
-Wind sports enthusiasts (wingfoil, kitesurfing) need access to real-time wind data from various sensor stations to plan their sessions. Wind data is scattered across multiple providers with different API formats, making it difficult to get a unified view of conditions.
+Wind data is scattered across multiple providers (Windy, Neduet, etc.), each with different APIs, data formats, and authentication methods. Wind sports enthusiasts and application developers need a single, unified endpoint to query wind sensor data without integrating with each provider individually.
 
 ## Problems It Solves
-1. **Fragmented Data Sources**: Wind sensor data is available from multiple providers (Windy, Neduet, etc.), each with their own API format and authentication
-2. **Inconsistent API Contracts**: Each provider returns data in a different structure, requiring custom parsing logic
-3. **Location Discovery**: Users need to know which sensor stations exist and where they are located
-4. **Configuration Management**: Sensor locations and metadata need to be maintained separately from the application code
+1. **Provider Fragmentation**: Each wind data provider has a unique API format and access pattern
+2. **Integration Complexity**: Frontend applications must handle multiple API protocols
+3. **Provider Failover**: No easy way to switch providers when one is unavailable
+4. **Location Discovery**: Difficult to find available sensor locations across providers
+5. **Data Normalization**: Wind data formats vary significantly between providers
 
 ## How It Should Work
-1. A client (mobile app, web frontend) sends a request with a sensor identifier
-2. The backend identifies the correct provider based on the sensor's provider code
-3. The backend calls the provider's API, parses the response, and returns normalized wind data
-4. Clients can also fetch a list of available spots/locations with their associated sensors
+- Client sends a request with sensor ID and/or location parameters
+- Backend routes the request to the appropriate provider(s)
+- Data is normalized into a consistent format (Burst/Mean speed in knots)
+- Response is returned to the client with unified structure
+- Debug mode available for development and troubleshooting
 
 ## User Experience Goals
-- Fast responses (virtual threads for I/O-bound operations)
-- Consistent data format regardless of the underlying provider
-- Easy to add new providers without changing the API contract
-- External configuration allows updating sensor locations without redeploying
+- **Simple API**: Clean REST endpoints with intuitive request/response format
+- **Fast Responses**: Leverage Micronaut's fast startup and virtual threads for quick I/O
+- **Reliable**: Graceful error handling when providers are unavailable
+- **Discoverable**: OpenAPI/Swagger UI for API exploration
+- **Transparent**: Debug mode shows raw provider responses for troubleshooting
 
-## Target Users
-- Wind sports app developers who need a unified wind data API
-- Personal use for checking wind conditions at specific locations
-- Primarily focused on Russia (Neduet provider) and international locations (Windy provider)
+## Domain Context
+- **Wind Sports**: Wingfoil, kitesurfing, windsurfing athletes need accurate wind data
+- **Sensor Networks**: Professional wind sensors deployed at popular spots
+- **Key Metrics**: Burst speed (gusts), Mean speed (average), measured in knots
+- **Geography**: Focus on Mediterranean/Egypt locations (Dahab specifically)
+
+## Value Proposition
+- Single integration point for multiple wind data sources
+- Normalized data format reduces frontend complexity
+- Easy provider addition without client code changes
+- Debug capabilities for data quality verification

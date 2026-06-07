@@ -1,29 +1,44 @@
-# Project Brief: WindSensorBackend
+# Project Brief - WindSensorBackend
 
 ## Overview
-A REST API backend service that aggregates wind speed and direction data from multiple wind sensor providers. Built for wind sports enthusiasts (wingfoil, kitesurfing) who need real-time wind condition data from various sensor locations.
+WindSensorBackend is a REST API service that aggregates wind sensor data from multiple external providers (Windy, Neduet) and provides a unified interface for fetching wind readings and sensor location information.
 
 ## Core Requirements
-- Fetch wind sensor data from external providers (Windy API, Neduet API)
-- Fetch spot/location data from external configuration repository
-- Provide a unified REST API for consuming wind data across providers
-- Support configurable reading windows and number of readings per request
-- Deployable as a Docker container
-- Configurable via environment variables for production deployments
+- Aggregate wind data from multiple external API providers
+- Provide a unified REST API for wind sensor queries
+- Support sensor location discovery (spots data)
+- Plugin-based architecture for easy provider addition
+- Stateless, horizontally scalable design
+- Fast startup and low memory footprint via Micronaut AOT
 
 ## Key Goals
-- Abstract away provider-specific API differences behind a unified interface
-- Enable easy addition of new wind data providers
-- Keep configuration (spots, providers) externalized and maintainable
-- Low-latency responses using Java virtual threads
+- Single API endpoint for wind data regardless of source provider
+- Easy integration of new wind data providers
+- Reliable external API communication with proper error handling
+- Docker-native deployment
+- Production-ready with SSL, metrics, and health checks
 
 ## Scope
-- Backend API only (no frontend)
-- Two endpoints: sensor data retrieval and spots data retrieval
-- Provider plugin architecture for extensibility
-- External configuration stored in a separate GitHub repository (WindSensorConfig)
+- Wind data fetching (Burst and Mean wind speeds in knots)
+- Sensor location management (spots data from external config)
+- Multi-provider support (Windy variants, Neduet)
+- Debug mode for development and troubleshooting
+- API documentation via OpenAPI/Swagger UI
 
 ## Out of Scope
-- Data storage/persistence (stateless proxy)
-- User authentication (security is optional/configurable)
-- Real-time push (WebSocket/SSE) - currently request/response only
+- Data persistence (no database)
+- User authentication/authorization (security commented out)
+- Real-time push notifications (polling-based only)
+- Historical data storage
+- Caching layer
+
+## Target Users
+- Wind sports enthusiasts (wingfoil, kitesurfing)
+- Mobile/web applications needing wind data
+- Dashboard applications for wind visualization
+
+## Current Status
+- Framework: Micronaut 5.0.0, Java 25
+- Core functionality implemented and stable
+- Test infrastructure prepared, tests pending
+- Deployed via Docker containers

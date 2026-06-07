@@ -1,50 +1,41 @@
 # Active Context
 
 ## Current Work Focus
-Project is in active development with recent refactoring work completed. Latest commits focus on test infrastructure setup and OpenAPI documentation support.
+- **Micronaut 5 Migration** - Completed migration from Micronaut 4.x to Micronaut 5.0.0 (commit `56bba3f`)
+  - Updated `io.micronaut.application` plugin to version 5.0.0
+  - Updated `io.micronaut.aot` plugin to version 5.0.0
+  - Verified application compatibility with Micronaut 5 runtime
 
-## Recent Changes (as of 2026-06-06)
-- **refactor tests** (728968e) - Removed `WindSensorBackendTest.java`, cleaned up test structure. Added testcontainers and MockServer dependencies to build.gradle for future test implementation.
-- **add open api support** (5d3e37f) - Added `micronaut-openapi` dependency (both implementation and annotationProcessor). Configured Swagger UI views in application.yml at `/swagger/**` and `/swagger-ui/**`.
-- **Multiple refactoring commits** - Ongoing code refactoring (c8ca8dc, fa8c4f7, ab64b23, cb4fca4, ed70872, etc.)
-- **Global exception handler** - Moved to dedicated `GlobalExceptionHandler.java` bean
+## Recent Changes
+1. **Migrate to Micronaut 5** (2026-06-07) - Major framework upgrade
+2. **Refactoring** (commit `531a836`) - Code cleanup and structure improvements
+3. **Update memory bank** (commit `c6b857a`) - Previous documentation update
+4. **Refactor tests** (commit `728968e`) - Test infrastructure preparation, testcontainers + MockServer dependencies added
+5. **Add OpenAPI support** (commit `5d3e37f`) - Swagger UI documentation enabled
 
 ## Next Steps
-- Implement actual tests using testcontainers + MockServer infrastructure (dependencies added but no test classes exist yet)
-- Write unit tests for provider implementations (Windy, Neduet)
-- Write integration tests for controller endpoints
-- Consider adding caching layer for frequently requested sensor data
-- Consider adding rate limiting for external API calls
-- Explore additional wind data providers
+- [ ] Write actual test classes (test infrastructure is ready but `src/test/java` is empty)
+- [ ] Add OpenAPI annotations to controller endpoints for proper API documentation
+- [ ] Implement caching layer for frequently requested data
+- [ ] Add rate limiting for external API calls
+- [ ] Create comprehensive error response format
+- [ ] Additional wind data providers as needed
 
 ## Active Decisions and Considerations
-- Provider architecture uses a strategy pattern with `WindDataProvider<T>` interface
-- Abstract base class `BaseWindyDataProvider<T>` shares common logic among Windy provider variants
-- Each provider implements its own response parsing and data extraction
-- Configuration is externalized via `application.yml` and a separate GitHub config repository
-- Uses Vavr's `Try` and `Option` for functional error handling instead of exceptions
-- OpenAPI/Swagger UI now enabled for API documentation
-- Test infrastructure prepared (testcontainers, MockServer) but tests not yet written
+- Micronaut 5 chosen for latest framework improvements and long-term support
+- Stateless architecture maintained - no database or cache layer
+- Virtual threads (Java 25) used for I/O-bound request handling
+- Vavr used for functional error handling patterns
+- External configuration loaded from GitHub raw content
 
 ## Important Patterns and Preferences
-- Java records for DTOs (immutable, concise)
-- Vavr library for functional programming constructs
-- Apache HttpClient5 for HTTP communication
-- Micronaut's dependency injection and configuration binding
-- Virtual threads for I/O-bound handler execution (`@ExecuteOn(TaskExecutors.VIRTUAL)`)
-- Palantir Java Format via Spotless plugin for code style
+- Plugin-based provider system (`WindDataProvider` interface with implementations)
+- Abstract base classes for similar providers (`BaseWindyDataProvider`)
+- Global exception handling via dedicated `@Controller` bean (`GlobalExceptionHandler`)
+- Configuration externalized via `application.yml` with environment variable overrides
 
 ## Learnings and Project Insights
-- The project is a stateless proxy/aggregator - no database involved
-- All configuration (spots, sensors) lives in an external GitHub repo: `vladiksun/WindSensorConfig`
-- Provider implementations are in `provider/impl/` package with multiple Windy variants
-- Response models are organized by provider in `response/{provider}/` packages
-- SSL and security are configurable but disabled by default for development
-- Test Java directory is completely empty - test coverage is 0%
-
-## Pending Tasks
-- [ ] Write unit tests for provider implementations
-- [ ] Write integration tests for controller endpoints using MockServer
-- [ ] Document API contracts via OpenAPI annotations
-- [ ] Review and potentially add caching strategy
-- [ ] Consider rate limiting for external API calls
+- Micronaut 5 migration was straightforward due to clean architecture
+- Test infrastructure (testcontainers, MockServer) prepared but tests not yet written
+- OpenAPI integration working but endpoint annotations still needed
+- MockServer client downgraded from 6.1.0 to 5.15.0 for compatibility
