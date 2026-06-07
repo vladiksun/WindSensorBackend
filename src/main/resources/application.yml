@@ -52,4 +52,6 @@ wind-sensor:
       url: https://neduet.ru/api/full
 
   spots-data-url: ${SPOTS_DATA_URL:`https://raw.githubusercontent.com/vladiksun/WindSensorConfig/refs/heads/main/spots.json`}
+  spots-test-data-url: ${SPOTS_TEST_DATA_URL:`https://raw.githubusercontent.com/vladiksun/WindSensorConfig/refs/heads/main/spots_test.json`}
+  spots-dahab-url: ${SPOTS_DAHAB_URL:`https://raw.githubusercontent.com/vladiksun/WindSensorConfig/refs/heads/main/spots_dahab.json`}
   spots-data-media-type: ${SPOTS_DATA_MEDIA_TYPE:`text/plain`}

@@ -115,7 +115,7 @@ public class ProxyService {
     Try<List<SpotDataDTO>> requestSpotsData(boolean isDebug) {
         String url;
         if (isDebug) {
-            url = "https://raw.githubusercontent.com/vladiksun/WindSensorConfig/refs/heads/main/spots_test.json";
+            url = windSensorConfig.getSpotsTestDataUrl();
         } else {
             url = windSensorConfig.getSpotsDataUrl();
         }
@@ -124,7 +124,7 @@ public class ProxyService {
     }
 
     Try<List<SpotDataDTO>> requestSpotsDataForDahab(boolean isDebug) {
-        var url = "https://raw.githubusercontent.com/vladiksun/WindSensorConfig/refs/heads/main/spots_dahab.json";
+        var url = windSensorConfig.getSpotsDahabUrl();
 
         return requestSpotsDataForURL(url);
     }

@@ -10,6 +10,10 @@ public class WindSensorConfig {
 
     private String spotsDataUrl;
 
+    private String spotsTestDataUrl;
+
+    private String spotsDahabUrl;
+
     private String spotsDataMediaType;
 
     public String getSpotsDataUrl() {
@@ -18,6 +22,22 @@ public class WindSensorConfig {
 
     public void setSpotsDataUrl(String spotsDataUrl) {
         this.spotsDataUrl = spotsDataUrl;
+    }
+
+    public String getSpotsTestDataUrl() {
+        return spotsTestDataUrl;
+    }
+
+    public void setSpotsTestDataUrl(String spotsTestDataUrl) {
+        this.spotsTestDataUrl = spotsTestDataUrl;
+    }
+
+    public String getSpotsDahabUrl() {
+        return spotsDahabUrl;
+    }
+
+    public void setSpotsDahabUrl(String spotsDahabUrl) {
+        this.spotsDahabUrl = spotsDahabUrl;
     }
 
     public String getSpotsDataMediaType() {
