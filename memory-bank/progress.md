@@ -16,7 +16,7 @@
 - Virtual threads for I/O-bound request handling
 - OpenAPI/Swagger UI enabled at `/swagger/**` and `/swagger-ui/**`
 - Global exception handling via dedicated `GlobalExceptionHandler` bean
-- Test infrastructure dependencies configured (testcontainers, MockServer)
+- Test infrastructure dependencies configured (testcontainers, MockServer, JUnit Platform Launcher)
 - Micronaut 5 migration completed successfully
 
 ## What's Left to Build
@@ -54,3 +54,4 @@
 - Added testcontainers + MockServer for test infrastructure (2026-06-06)
 - Moved exception handling to dedicated `@Controller` bean for cleaner separation
 - MockServer client downgraded from 6.1.0 to 5.15.0 for compatibility
+- JUnit Platform Launcher added as testRuntimeOnly dependency (2026-06-07) for proper test discovery

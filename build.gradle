@@ -21,7 +21,7 @@ dependencies {
     implementation("io.micronaut.openapi:micronaut-openapi")
     implementation("io.micronaut.serde:micronaut-serde-jackson")
     implementation("io.micronaut.rxjava3:micronaut-rxjava3")
-//    implementation("io.micronaut.security:micronaut-security")
+
     implementation("io.micronaut:micronaut-management")
     implementation("io.micronaut.micrometer:micronaut-micrometer-core")
 
@@ -33,10 +33,12 @@ dependencies {
 
     testImplementation("io.micronaut:micronaut-http-client")
     testImplementation("io.micronaut.test:micronaut-test-rest-assured")
-
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testImplementation("org.testcontainers:testcontainers-mockserver")
+    testImplementation("org.apache.commons:commons-compress:1.28.0")
     testImplementation("org.mock-server:mockserver-client-java:5.15.0")
+    testImplementation("org.testcontainers:testcontainers")
+    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+    testImplementation("org.testcontainers:testcontainers-mockserver")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 application {

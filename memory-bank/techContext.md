@@ -31,6 +31,7 @@
 - **Micronaut Test RestAssured** - Integration testing framework
 - **Testcontainers MockServer** - Container-based API mocking
 - **MockServer Client Java 5.15.0** - Client library for MockServer (downgraded from 6.1.0 for compatibility)
+- **JUnit Platform Launcher** - Test runtime support for JUnit Platform discovery and execution
 
 ### Optional/Commented
 - **Micronaut Security** - Present in dependencies but commented out, configurable via `SECURITY_ENABLED`
@@ -103,3 +104,4 @@ test:
   - micronaut-test-rest-assured (testing)
   - testcontainers:mockserver (container testing)
   - mockserver-client-java:5.15.0 (mock client)
+  - junit-platform-launcher (test runtime)
