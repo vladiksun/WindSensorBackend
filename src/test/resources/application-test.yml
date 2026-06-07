@@ -3,3 +3,14 @@ micronaut:
     port: 8080
     ssl:
       enabled: false
+
+wind-sensor:
+  wind-providers:
+    windy:
+      url: http://localhost:0
+    neduet:
+      url: http://localhost:0
+  spots-data-url: http://localhost:0
+  spots-test-data-url: http://localhost:0
+  spots-dahab-url: http://localhost:0
+  spots-data-media-type: application/json
