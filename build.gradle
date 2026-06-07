@@ -1,7 +1,7 @@
 plugins {
-    id("io.micronaut.application") version "4.5.4"
-    id("com.gradleup.shadow") version "8.3.7"
-    id("io.micronaut.aot") version "4.5.4"
+    id("io.micronaut.application") version "5.0.0"
+    id("com.gradleup.shadow") version "9.4.1"
+    id("io.micronaut.aot") version "5.0.0"
     id("com.google.cloud.tools.jib") version "3.4.5"
     id("com.diffplug.spotless") version "8.5.1"
 }
@@ -15,8 +15,8 @@ repositories {
 
 dependencies {
     annotationProcessor("io.micronaut:micronaut-http-validation")
-    annotationProcessor("io.micronaut.openapi:micronaut-openapi")
     annotationProcessor("io.micronaut.serde:micronaut-serde-processor")
+    annotationProcessor("io.micronaut.openapi:micronaut-openapi")
 
     implementation("io.micronaut.openapi:micronaut-openapi")
     implementation("io.micronaut.serde:micronaut-serde-jackson")
@@ -34,10 +34,8 @@ dependencies {
     testImplementation("io.micronaut:micronaut-http-client")
     testImplementation("io.micronaut.test:micronaut-test-rest-assured")
 
-    testImplementation("org.testcontainers:junit-jupiter:1.21.4")
-
-    testImplementation("org.testcontainers:mockserver:1.21.4")
-    testImplementation("org.mock-server:mockserver-client-java:6.1.0")
+    testImplementation("org.testcontainers:testcontainers-mockserver")
+    testImplementation("org.mock-server:mockserver-client-java:5.15.0")
 }
 
 application {
