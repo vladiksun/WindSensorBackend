@@ -27,11 +27,11 @@ You MUST NOT use lines of this file starting with `[//]:`
 
 ## Code style
 
-You SHOULD prefer modern Java idioms: records, pattern matching, sealed interfaces/classes, `var` for local variables.
-You SHOULD pattern matching in Java `instanceof` if possible.
-You MUST NOT use fully qualified class names unless there is a conflict between 2 class names in different packages.
-You MUST NOT use reflection: Micronaut is a reflection-free framework tailored for integration with GraalVM.
-You MUST use `jakarta.inject` for dependency injection, NOT `javax.inject`.
+- You SHOULD prefer modern Java idioms: records, pattern matching, sealed interfaces/classes, `var` for local variables.
+- You SHOULD use pattern matching in Java `instanceof` if possible.
+- You MUST NOT use fully qualified class names unless there is a conflict between 2 class names in different packages.
+- You MUST NOT use reflection: Micronaut is a reflection-free framework tailored for integration with GraalVM.
+- You MUST use `jakarta.inject` for dependency injection, NOT `javax.inject`.
 
 ## Binary compatibility
 
@@ -149,42 +149,60 @@ You MUST follow this sequence after editing source files:
 
 ## Dependency Management (Version Catalogs)
 
-- Main dependencies are managed in the Gradle version catalog at `gradle/libs.versions.toml`.
-- You MUST use catalogs when adding dependencies (avoid hard-coded coordinates/versions in module builds).
+[//]: # (- Main dependencies are managed in the Gradle version catalog at `gradle/libs.versions.toml`.)
 
-Adding a new dependency (steps):
+[//]: # (- You MUST use catalogs when adding dependencies &#40;avoid hard-coded coordinates/versions in module builds&#41;.)
 
-1) Choose or add the version in the appropriate catalog (`libs.versions.toml`).
+[//]: # ()
+[//]: # (Adding a new dependency &#40;steps&#41;:)
 
-2) Add an alias under the relevant section (e.g., `libraries`).
+[//]: # ()
+[//]: # (1&#41; Choose or add the version in the appropriate catalog &#40;`libs.versions.toml`&#41;.)
 
-3) Reference the alias from a module’s `build.gradle`, for example:
+[//]: # ()
+[//]: # (2&#41; Add an alias under the relevant section &#40;e.g., `libraries`&#41;.)
 
-    - `implementation(libs.some.library)`
+[//]: # ()
+[//]: # (3&#41; Reference the alias from a module’s `build.gradle`, for example:)
 
-    - `testImplementation(testlibs.some.junit)`
+[//]: # ()
+[//]: # (    - `implementation&#40;libs.some.library&#41;`)
 
-4) Do NOT hardcode versions in module build files; use the catalog entries.
+[//]: # ()
+[//]: # (    - `testImplementation&#40;testlibs.some.junit&#41;`)
 
-You SHOULD choose the appropriate scope depending on the use of the library:
+[//]: # ()
+[//]: # (4&#41; Do NOT hardcode versions in module build files; use the catalog entries.)
 
-- `api` for dependencies which appear in public signatures or the API of a module
+[//]: # ()
+[//]: # (You SHOULD choose the appropriate scope depending on the use of the library:)
 
-- `implementation` for dependencies which are implementation details, only used in the method bodies for example
+[//]: # ()
+[//]: # (- `api` for dependencies which appear in public signatures or the API of a module)
 
-- `compileOnly` for dependencies which are only required at build time but not at runtime
+[//]: # ()
+[//]: # (- `implementation` for dependencies which are implementation details, only used in the method bodies for example)
 
-- `runtimeOnly` for dependencies which are only required at run time and not at compile time
+[//]: # ()
+[//]: # (- `compileOnly` for dependencies which are only required at build time but not at runtime)
+
+[//]: # ()
+[//]: # (- `runtimeOnly` for dependencies which are only required at run time and not at compile time)
 
 ## Build logic
 
-Micronaut projects follow Gradle best practices, in particular usage of convention plugins.
-Convention plugins live under the `buildSrc` directory.
+[//]: # (Micronaut projects follow Gradle best practices, in particular usage of convention plugins.)
 
-You MUST NOT add custom build logic directly in `build.gradle(.kts)` files.
-You MUST implement build logic as part of convention plugins.
-You SHOULD avoid build logic code duplication by moving common build logic into custom convention plugins.
-You SHOULD try to prefer composition of convention plugins.
+[//]: # (Convention plugins live under the `buildSrc` directory.)
+
+[//]: # ()
+[//]: # (You MUST NOT add custom build logic directly in `build.gradle&#40;.kts&#41;` files.)
+
+[//]: # (You MUST implement build logic as part of convention plugins.)
+
+[//]: # (You SHOULD avoid build logic code duplication by moving common build logic into custom convention plugins.)
+
+[//]: # (You SHOULD try to prefer composition of convention plugins.)
 
 ## Key Requirements
 
