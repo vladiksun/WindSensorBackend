@@ -64,7 +64,6 @@ You MUST follow this sequence after editing source files:
 [//]: # (5&#41; &#40;Optional&#41; If, and only if you have created new files, you SHOULD run)
 
 - Spotless check: `./gradlew -q spotlessCheck`
-
 - If Spotless fails: `./gradlew -q spotlessApply` then re-run `spotlessCheck`
 
 
@@ -80,72 +79,7 @@ You MUST follow this sequence after editing source files:
 [//]: # (- You SHOULD check project configuration/build files before proposing structural or dependency changes.)
 
 ## Context7 Usage (Documentation and Examples)
-[//]: # (TODO)
-
-[//]: # (You MUST use Context7 to get up-to-date, version-specific documentation and code examples for frameworks and libraries.)
-
-[//]: # ()
-[//]: # (Preferred library IDs:)
-
-[//]: # (- Micronaut main docs: `/websites/micronaut_io`)
-
-[//]: # (- Micronaut Test: `/websites/micronaut-projects_github_io_micronaut-test`)
-
-[//]: # (- Micronaut Oracle Cloud: `/websites/micronaut-projects_github_io_micronaut-oracle-cloud`)
-
-[//]: # (- OpenRewrite: `/openrewrite/rewrite-docs`)
-
-[//]: # ()
-[//]: # (Example &#40;fetch docs for a topic&#41;:)
-
-[//]: # (```xml)
-
-[//]: # (<use_mcp_tool>)
-
-[//]: # (    <server_name>context7-mcp</server_name>)
-
-[//]: # (    <tool_name>get-library-docs</tool_name>)
-
-[//]: # (    <arguments>)
-
-[//]: # (        {)
-
-[//]: # (            "context7CompatibleLibraryID": "/openrewrite/rewrite-docs",)
-
-[//]: # (            "topic": "JavaIsoVisitor")
-
-[//]: # (        })
-
-[//]: # (    </arguments>)
-
-[//]: # (</use_mcp_tool>)
-
-[//]: # (```)
-
-[//]: # ()
-[//]: # (For other libraries, you MUST resolve the library ID first:)
-
-[//]: # (```xml)
-
-[//]: # (<use_mcp_tool>)
-
-[//]: # (    <server_name>context7-mcp</server_name>)
-
-[//]: # (    <tool_name>resolve-library-id</tool_name>)
-
-[//]: # (    <arguments>)
-
-[//]: # (        {)
-
-[//]: # (            "libraryName": "Mockito")
-
-[//]: # (        })
-
-[//]: # (    </arguments>)
-
-[//]: # (</use_mcp_tool>)
-
-[//]: # (```)
+If available you MUST use Context7  to get up-to-date, version-specific documentation and code examples for frameworks and libraries.
 
 ## Dependency Management (Version Catalogs)
 
