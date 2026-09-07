@@ -1,26 +1,49 @@
-For this application cover `@Get("/spots-data")` endpoint in src/main/java/com/vb/wingfoil/WindSensorController.java
-with integration tests.
+/opsx:explore ──► /opsx:propose ──► /opsx:apply ──► /opsx:sync ──► /opsx:archive
 
+####################################################################################################
+update memory bank
+####################################################################################################
+/opsx:apply
+####################################################################################################
+/opsx:propose Use skill openspec-propose
+####################################################################################################
+npx @playwright/mcp@latest --port 4000 --allowed-hosts '*' --isolated
+
+Зайди на сайт https://travel.yandex.ru/avia
+Найди ближайший рейс из Санкт-Петербурга в Москву с багажом.
+Выведи цену и время.
+####################################################################################################
+
+/opsx:propose
+For this application cover `@Get("/spots-data")` endpoint in src/main/java/com/vb/wingfoil/WindSensorController.java with integration tests.
 You MUST NOT mock service layer.
-
 To complete this task you MUST read and use example https://github.com/micronaut-projects/micronaut-guides/blob/master/guides/testing-rest-api-integrations-using-mockserver/java/src/test/java/example/micronaut/AlbumControllerMockServerTest.java
-
 To complete this task you MUST read and follow https://micronaut-projects.github.io/micronaut-test/4.6.0/guide/#junit5
-
 To complete this task you MUST use testcontainers Mockserver Module.
 To complete this task you MUST read and follow example to https://java.testcontainers.org/modules/mockserver
-
 To complete this task you MUST use REST Assured.
 To complete this task you MUST read and follow https://micronaut-projects.github.io/micronaut-test/4.6.0/guide/#restAssured
-
 For all other endpoint you MUST mock data via MockServer.
-
 To complete this task you MUST run tests you created.
-
 All tests should pass.
+The first task for open spec MUST be - write to the time_track.txt file the starting time.
+Then complete all other tasks.
+The last task for open spec MUST be - write to the time_track.txt file the finish time and the total time it took to complete the task.
 
+##########################################################
+For this application cover `@Get("/spots-data")` endpoint in src/main/java/com/vb/wingfoil/WindSensorController.java with integration tests.
+You MUST NOT mock service layer.
+To complete this task you MUST read and use example https://github.com/micronaut-projects/micronaut-guides/blob/master/guides/testing-rest-api-integrations-using-mockserver/java/src/test/java/example/micronaut/AlbumControllerMockServerTest.java
+To complete this task you MUST read and follow https://micronaut-projects.github.io/micronaut-test/4.6.0/guide/#junit5
+To complete this task you MUST use testcontainers Mockserver Module.
+To complete this task you MUST read and follow example to https://java.testcontainers.org/modules/mockserver
+To complete this task you MUST use REST Assured.
+To complete this task you MUST read and follow https://micronaut-projects.github.io/micronaut-test/4.6.0/guide/#restAssured
+For all other endpoint you MUST mock data via MockServer.
+To complete this task you MUST run tests you created.
+All tests should pass.
 Before you start implementing the task you should create file named time_track.txt inside the project.
-Before you start write to the time_track.txt file the starting time.
+Before you start - write to the time_track.txt file the starting time.
 After you finished you should write to the time_track.txt file the finish time and the total time it took to complete the task.
 
 ##########################################################
