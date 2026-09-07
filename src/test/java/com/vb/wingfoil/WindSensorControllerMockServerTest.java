@@ -30,19 +30,15 @@ import static org.mockserver.model.JsonBody.json;
 class WindSensorControllerMockServerTest implements TestPropertyProvider {
 
     @Container
-    static MockServerContainer mockServerContainer = new MockServerContainer(
-            DockerImageName.parse("mockserver/mockserver:5.15.0")
-    );
+    static MockServerContainer mockServerContainer =
+            new MockServerContainer(DockerImageName.parse("mockserver/mockserver:5.15.0"));
 
     static MockServerClient mockServerClient;
 
     @Override
     public @NonNull Map<String, String> getProperties() {
         mockServerContainer.start();
-        mockServerClient = new MockServerClient(
-                mockServerContainer.getHost(),
-                mockServerContainer.getServerPort()
-        );
+        mockServerClient = new MockServerClient(mockServerContainer.getHost(), mockServerContainer.getServerPort());
 
         return Map.of(
                 "wind-sensor.wind-providers.windy.url", mockServerContainer.getEndpoint() + "/api/windy/%s",
@@ -50,8 +46,7 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
                 "wind-sensor.spots-data-url", mockServerContainer.getEndpoint() + "/api/spots",
                 "wind-sensor.spots-test-data-url", mockServerContainer.getEndpoint() + "/api/spots-test",
                 "wind-sensor.spots-dahab-url", mockServerContainer.getEndpoint() + "/api/spots-dahab",
-                "wind-sensor.spots-data-media-type", "application/json"
-        );
+                "wind-sensor.spots-data-media-type", "application/json");
     }
 
     @BeforeEach
@@ -68,9 +63,7 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
         String sensorId = "12345";
 
         mockServerClient
-                .when(request()
-                        .withMethod("GET")
-                        .withPath("/api/windy/" + sensorId))
+                .when(request().withMethod("GET").withPath("/api/windy/" + sensorId))
                 .respond(response()
                         .withStatusCode(200)
                         .withHeaders(new Header("Content-Type", "application/json; charset=utf-8"))
@@ -107,8 +100,7 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
                                   },
                                   "time": 1700000000
                                 }
-                                """
-                        )));
+                                """)));
 
         String requestBody = """
                 {
@@ -145,9 +137,7 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
         String sensorId = "neduet-sensor-1";
 
         mockServerClient
-                .when(request()
-                        .withMethod("GET")
-                        .withPath("/api/neduet"))
+                .when(request().withMethod("GET").withPath("/api/neduet"))
                 .respond(response()
                         .withStatusCode(200)
                         .withHeaders(new Header("Content-Type", "application/json; charset=utf-8"))
@@ -179,8 +169,7 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
                                     "data": []
                                   }
                                 ]
-                                """
-                        )));
+                                """)));
 
         String requestBody = """
                 {
@@ -216,9 +205,7 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
         String sensorId = "empty-sensor";
 
         mockServerClient
-                .when(request()
-                        .withMethod("GET")
-                        .withPath("/api/windy/" + sensorId))
+                .when(request().withMethod("GET").withPath("/api/windy/" + sensorId))
                 .respond(response()
                         .withStatusCode(200)
                         .withHeaders(new Header("Content-Type", "application/json; charset=utf-8"))
@@ -252,9 +239,7 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
         String sensorId = "neduet-empty";
 
         mockServerClient
-                .when(request()
-                        .withMethod("GET")
-                        .withPath("/api/neduet"))
+                .when(request().withMethod("GET").withPath("/api/neduet"))
                 .respond(response()
                         .withStatusCode(200)
                         .withHeaders(new Header("Content-Type", "application/json; charset=utf-8"))
@@ -266,8 +251,7 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
                                     "data": []
                                   }
                                 ]
-                                """
-                        )));
+                                """)));
 
         String requestBody = """
                 {
@@ -297,9 +281,7 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
         String sensorId = "no-data-sensor";
 
         mockServerClient
-                .when(request()
-                        .withMethod("GET")
-                        .withPath("/api/windy/" + sensorId))
+                .when(request().withMethod("GET").withPath("/api/windy/" + sensorId))
                 .respond(response()
                         .withStatusCode(200)
                         .withHeaders(new Header("Content-Type", "application/json; charset=utf-8"))
@@ -315,8 +297,7 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
                                   },
                                   "time": 1700000000
                                 }
-                                """
-                        )));
+                                """)));
 
         String requestBody = """
                 {
@@ -348,9 +329,7 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
     @Test
     void shouldGetSpotsDataProductionMode(RequestSpecification spec) {
         mockServerClient
-                .when(request()
-                        .withMethod("GET")
-                        .withPath("/api/spots"))
+                .when(request().withMethod("GET").withPath("/api/spots"))
                 .respond(response()
                         .withStatusCode(200)
                         .withHeaders(new Header("Content-Type", "application/json; charset=utf-8"))
@@ -381,8 +360,7 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
                                     ]
                                   }
                                 ]
-                                """
-                        )));
+                                """)));
 
         spec.contentType(ContentType.JSON)
                 .when()
@@ -404,9 +382,7 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
     @Test
     void shouldGetSpotsDataDebugMode(RequestSpecification spec) {
         mockServerClient
-                .when(request()
-                        .withMethod("GET")
-                        .withPath("/api/spots-test"))
+                .when(request().withMethod("GET").withPath("/api/spots-test"))
                 .respond(response()
                         .withStatusCode(200)
                         .withHeaders(new Header("Content-Type", "application/json; charset=utf-8"))
@@ -425,8 +401,7 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
                                     ]
                                   }
                                 ]
-                                """
-                        )));
+                                """)));
 
         spec.contentType(ContentType.JSON)
                 .when()
@@ -445,9 +420,7 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
     @Test
     void shouldGetSpotsDataDahab(RequestSpecification spec) {
         mockServerClient
-                .when(request()
-                        .withMethod("GET")
-                        .withPath("/api/spots-dahab"))
+                .when(request().withMethod("GET").withPath("/api/spots-dahab"))
                 .respond(response()
                         .withStatusCode(200)
                         .withHeaders(new Header("Content-Type", "application/json; charset=utf-8"))
@@ -471,8 +444,7 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
                                     ]
                                   }
                                 ]
-                                """
-                        )));
+                                """)));
 
         spec.contentType(ContentType.JSON)
                 .when()
@@ -493,9 +465,7 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
     @Test
     void shouldReturnEmptyListWhenSpotsDataReturnsEmptyArray(RequestSpecification spec) {
         mockServerClient
-                .when(request()
-                        .withMethod("GET")
-                        .withPath("/api/spots"))
+                .when(request().withMethod("GET").withPath("/api/spots"))
                 .respond(response()
                         .withStatusCode(200)
                         .withHeaders(new Header("Content-Type", "application/json; charset=utf-8"))
@@ -512,9 +482,6 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
     }
 
     private void verifyMockServerRequest(String method, String path, int times) {
-        mockServerClient.verify(
-                request().withMethod(method).withPath(path),
-                VerificationTimes.exactly(times)
-        );
+        mockServerClient.verify(request().withMethod(method).withPath(path), VerificationTimes.exactly(times));
     }
 }
