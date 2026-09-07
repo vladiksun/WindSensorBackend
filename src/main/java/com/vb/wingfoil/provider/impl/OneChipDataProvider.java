@@ -52,9 +52,22 @@ public class OneChipDataProvider extends BaseWindyDataProvider<OneChipMeasuremen
     private static final int CELL_DIRECTION = 7;
     private static final int MIN_CELLS_FOR_DATA_ROW = 8;
 
+    /**
+     * Time zone in which the 1chip.ru page prints its wall-clock times (the sensor's local zone).
+     * Resolved from the {@code wind-sensor.wind-providers.onechip.timezone} config; falls back to the
+     * system-default zone when unset. Using an explicit zone keeps absolute timestamps stable even when
+     * the host/container runs in a different zone (e.g. UTC in Docker).
+     */
+    private final ZoneId zone;
+
     protected OneChipDataProvider(
             @Named(NAME) WindDataProviderConfig windDataProviderConfig, ObjectMapper objectMapper) {
         super(windDataProviderConfig, objectMapper);
+        this.zone = resolveZone(windDataProviderConfig.getTimezone());
+    }
+
+    private static ZoneId resolveZone(String zoneId) {
+        return (zoneId == null || zoneId.isBlank()) ? ZoneId.systemDefault() : ZoneId.of(zoneId);
     }
 
     @Override
@@ -95,7 +108,6 @@ public class OneChipDataProvider extends BaseWindyDataProvider<OneChipMeasuremen
 
     private List<OneChipMeasurement> parseMeasurements(String html) {
         var arrivedDate = extractArrivedDate(html);
-        var zone = ZoneId.systemDefault();
 
         Document document = Jsoup.parse(html);
         var rows = document.select("#data_table tr");
@@ -109,7 +121,7 @@ public class OneChipDataProvider extends BaseWindyDataProvider<OneChipMeasuremen
             if ("hh:mm".equalsIgnoreCase(cells.get(CELL_TIME).text().trim())) {
                 continue; // header row
             }
-            var measurement = parseRow(cells, arrivedDate, zone);
+            var measurement = parseRow(cells, arrivedDate, this.zone);
             if (measurement != null) {
                 measurements.add(measurement);
             }

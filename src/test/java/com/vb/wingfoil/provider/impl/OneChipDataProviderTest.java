@@ -16,9 +16,17 @@ class OneChipDataProviderTest {
 
     private final OneChipDataProvider provider = createProvider();
 
+    /**
+     * The zone the 1chip.ru page prints times in (sensor-local, Egypt). Pinned here so the test is
+     * deterministic on any machine (including CI running in UTC) and guards against regressions to
+     * a system-default-zone conversion.
+     */
+    private static final ZoneId ZONE = ZoneId.of("Africa/Cairo");
+
     private static OneChipDataProvider createProvider() {
         var config = new WindDataProviderConfig(OneChipDataProvider.NAME);
         config.setUrl("https://1chip.ru/windt.php?id=%s");
+        config.setTimezone(ZONE.getId());
         // The ObjectMapper is unused by this HTML-based provider, so a null instance is safe in this unit test.
         return new OneChipDataProvider(config, null);
     }
@@ -30,9 +38,7 @@ class OneChipDataProviderTest {
     }
 
     private static long ts(int hour, int minute) {
-        return LocalDateTime.of(2026, 9, 6, hour, minute)
-                .atZone(ZoneId.systemDefault())
-                .toEpochSecond();
+        return LocalDateTime.of(2026, 9, 6, hour, minute).atZone(ZONE).toEpochSecond();
     }
 
     private static List<SensorDataDTO> readings(OneChipDataProvider provider, String body, int window, int count) {

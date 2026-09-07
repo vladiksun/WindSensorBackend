@@ -56,6 +56,8 @@ public class WindSensorConfig {
 
         private String url;
 
+        private String timezone;
+
         public WindDataProviderConfig(@Parameter String name) {
             this.name = name;
         }
@@ -74,6 +76,14 @@ public class WindSensorConfig {
 
         public void setName(String name) {
             this.name = name;
+        }
+
+        public String getTimezone() {
+            return timezone;
+        }
+
+        public void setTimezone(String timezone) {
+            this.timezone = timezone;
         }
     }
 }
