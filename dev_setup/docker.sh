@@ -11,3 +11,5 @@ docker run --rm -it \
   -v /home/keystore.p12:/home/keystore.p12:ro \
   -e KEY_STORE_PATH=file:/home/keystore.p12 \
 windsensorbackend:latest
+
+docker logs --tail 100 -f windsensorbackend
