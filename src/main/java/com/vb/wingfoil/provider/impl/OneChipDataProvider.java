@@ -1,17 +1,13 @@
 package com.vb.wingfoil.provider.impl;
 
+import static com.vb.wingfoil.WindSensorConfig.WindDataProviderConfig;
+
 import com.vb.wingfoil.SensorDataDTO;
 import com.vb.wingfoil.response.onechip.OneChipMeasurement;
 import io.micronaut.serde.ObjectMapper;
 import io.vavr.control.Try;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -22,8 +18,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static com.vb.wingfoil.WindSensorConfig.WindDataProviderConfig;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Provider for sensors that publish data only through the server-side-rendered HTML page at

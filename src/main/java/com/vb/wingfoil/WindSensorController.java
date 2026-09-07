@@ -4,7 +4,6 @@ import io.micronaut.http.annotation.*;
 import io.micronaut.scheduling.TaskExecutors;
 import io.micronaut.scheduling.annotation.ExecuteOn;
 import io.vavr.control.Option;
-
 import java.util.List;
 
 @Controller

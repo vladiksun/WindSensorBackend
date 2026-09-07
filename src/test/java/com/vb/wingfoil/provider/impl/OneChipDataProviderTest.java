@@ -1,16 +1,15 @@
 package com.vb.wingfoil.provider.impl;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.vb.wingfoil.SensorDataDTO;
 import com.vb.wingfoil.WindSensorConfig.WindDataProviderConfig;
-import org.junit.jupiter.api.Test;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 class OneChipDataProviderTest {
 

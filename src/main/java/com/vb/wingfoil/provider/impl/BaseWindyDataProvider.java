@@ -6,7 +6,6 @@ import com.vb.wingfoil.provider.WindDataProvider;
 import io.micronaut.core.util.CollectionUtils;
 import io.micronaut.serde.ObjectMapper;
 import io.vavr.control.Try;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;

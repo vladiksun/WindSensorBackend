@@ -1,5 +1,7 @@
 package com.vb.wingfoil.provider.impl;
 
+import static com.vb.wingfoil.WindSensorConfig.WindDataProviderConfig;
+
 import com.vb.wingfoil.SensorDataDTO;
 import com.vb.wingfoil.response.windy.WindyMeasurement;
 import com.vb.wingfoil.response.windy.WindyStationApiResponse;
@@ -7,12 +9,9 @@ import io.micronaut.serde.ObjectMapper;
 import io.vavr.control.Try;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.List;
-
-import static com.vb.wingfoil.WindSensorConfig.WindDataProviderConfig;
 
 @Singleton
 public class WindyDataProvider extends BaseWindyDataProvider<WindyMeasurement> {

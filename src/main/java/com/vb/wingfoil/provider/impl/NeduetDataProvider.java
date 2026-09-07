@@ -1,5 +1,7 @@
 package com.vb.wingfoil.provider.impl;
 
+import static com.vb.wingfoil.WindSensorConfig.WindDataProviderConfig;
+
 import com.vb.wingfoil.SensorDataDTO;
 import com.vb.wingfoil.response.neduet.NeduetMeasurement;
 import com.vb.wingfoil.response.neduet.NeduetStationInfo;
@@ -8,13 +10,10 @@ import io.micronaut.serde.ObjectMapper;
 import io.vavr.control.Try;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.util.List;
-
-import static com.vb.wingfoil.WindSensorConfig.WindDataProviderConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Singleton
 public class NeduetDataProvider extends BaseWindyDataProvider<NeduetMeasurement> {

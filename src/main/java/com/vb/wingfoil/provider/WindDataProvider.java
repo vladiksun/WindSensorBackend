@@ -2,7 +2,6 @@ package com.vb.wingfoil.provider;
 
 import com.vb.wingfoil.SensorDataDTO;
 import io.vavr.control.Try;
-
 import java.io.IOException;
 import java.util.List;
 

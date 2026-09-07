@@ -1,7 +1,6 @@
 package com.vb.wingfoil.provider.impl;
 
 import com.vb.wingfoil.SensorDataDTO;
-
 import java.util.List;
 
 @FunctionalInterface

@@ -2,7 +2,6 @@ package com.vb.wingfoil.response.neduet;
 
 import io.micronaut.core.annotation.NonNull;
 import io.micronaut.serde.annotation.Serdeable;
-
 import java.util.List;
 
 @Serdeable
