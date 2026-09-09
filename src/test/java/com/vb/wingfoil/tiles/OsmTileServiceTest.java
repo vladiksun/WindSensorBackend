@@ -2,7 +2,6 @@ package com.vb.wingfoil.tiles;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sun.net.httpserver.HttpExchange;
@@ -94,7 +93,7 @@ class OsmTileServiceTest implements TestPropertyProvider {
 
     @Test
     void storesTileOn200AndServesHitWithinValidity() {
-        var first = tileService.getTile(15, 16384, 20480);
+        var first = tileService.getTile(15, 16384, 20480).get();
         assertEquals(OsmTileService.CacheStatus.MISS, first.status());
         assertArrayEquals(PNG_BYTES, first.png());
         assertEquals(1, countOf(TILE_MAX_AGE), "first lookup must fetch upstream");
@@ -105,7 +104,7 @@ class OsmTileServiceTest implements TestPropertyProvider {
         assertTrue(first.expiresAtEpochMillis()
                 <= System.currentTimeMillis() + Duration.ofDays(8).toMillis());
 
-        var second = tileService.getTile(15, 16384, 20480);
+        var second = tileService.getTile(15, 16384, 20480).get();
         assertEquals(OsmTileService.CacheStatus.HIT, second.status());
         assertArrayEquals(first.png(), second.png());
         assertEquals(1, countOf(TILE_MAX_AGE), "second lookup within validity must not touch upstream");
@@ -121,7 +120,7 @@ class OsmTileServiceTest implements TestPropertyProvider {
         var past = System.currentTimeMillis() - 1000L;
         tileCache.put(TILE_SHORT_LIVED, new CachedTile(PNG_BYTES, past, past, "\"v1\""));
 
-        var result = tileService.getTile(15, 16388, 20480);
+        var result = tileService.getTile(15, 16388, 20480).get();
 
         assertEquals(OsmTileService.CacheStatus.REVALIDATED, result.status());
         assertArrayEquals(PNG_BYTES, result.png(), "304 keeps the existing bytes");
@@ -132,13 +131,17 @@ class OsmTileServiceTest implements TestPropertyProvider {
 
     @Test
     void doesNotStoreOn404() {
-        assertThrows(OsmTileService.TileFetchException.class, () -> tileService.getTile(15, 16387, 20480));
+        var result = tileService.getTile(15, 16387, 20480);
+        assertTrue(result.isFailure(), "upstream 404 must produce a Failure");
+        assertTrue(
+                result.getCause() instanceof OsmTileService.TileFetchException,
+                "failure cause must be TileFetchException");
         assertTrue(tileCache.get(TILE_NOT_FOUND, CachedTile.class).isEmpty(), "failed fetches must not be cached");
     }
 
     @Test
     void fallsBackToMinTtlWhenCacheHeadersMissing() {
-        var result = tileService.getTile(15, 16386, 20480);
+        var result = tileService.getTile(15, 16386, 20480).get();
 
         assertEquals(OsmTileService.CacheStatus.MISS, result.status());
         // expiresAt is computed at fetch time (slightly before this assertion), so allow a small slack.
@@ -150,7 +153,7 @@ class OsmTileServiceTest implements TestPropertyProvider {
 
     @Test
     void honoursExpiresHeader() {
-        var result = tileService.getTile(15, 16385, 20480);
+        var result = tileService.getTile(15, 16385, 20480).get();
 
         assertEquals(OsmTileService.CacheStatus.MISS, result.status());
         // The stub sends Expires = now + 30 days, beyond the 7-day min-ttl floor, so a value near

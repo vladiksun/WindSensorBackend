@@ -12,7 +12,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.vavr.control.Try;
 
 /**
  * Single-tile caching proxy for OpenStreetMap slippy-map tiles. This is the only tile-serving route
@@ -51,7 +50,8 @@ public class TileProxyController {
     }
 
     private HttpResponse<byte[]> serveTile(TileCoordinate coordinate) {
-        return Try.of(() -> tileService.getTile(coordinate.z(), coordinate.x(), coordinate.y()))
+        return tileService
+                .getTile(coordinate.z(), coordinate.x(), coordinate.y())
                 .map(result -> {
                     var remainingSeconds =
                             Math.max(0L, (result.expiresAtEpochMillis() - System.currentTimeMillis()) / 1000);

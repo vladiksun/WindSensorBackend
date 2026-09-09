@@ -32,6 +32,7 @@ You MUST NOT use lines of this file starting with `[//]:`
 - You MUST NOT use fully qualified class names unless there is a conflict between 2 class names in different packages.
 - You MUST NOT use reflection: Micronaut is a reflection-free framework tailored for integration with GraalVM.
 - You MUST use `jakarta.inject` for dependency injection, NOT `javax.inject`.
+- You MUST use skill vavr-functional-programming.
 
 ## Binary compatibility
 

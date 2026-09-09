@@ -58,23 +58,24 @@ public class OsmTileService {
     }
 
     /**
-     * @return the tile bytes plus cache status and validity window
-     * @throws TileFetchException when the upstream fetch fails (non-2xx or IO error)
+     * @return a {@link Try} containing the tile bytes plus cache status and validity window;
+     *         a {@code Failure} carrying a {@link TileFetchException} when the upstream fetch
+     *         fails (non-2xx or IO error)
      */
-    public TileResult getTile(int z, int x, int y) {
+    public Try<TileResult> getTile(int z, int x, int y) {
         var key = tileKey(z, x, y);
         var now = System.currentTimeMillis();
 
         var cached = tileCache.get(key, CachedTile.class);
         if (cached.isPresent() && cached.get().expiresAtEpochMillis() > now) {
-            return new TileResult(
-                    cached.get().png(), CacheStatus.HIT, cached.get().expiresAtEpochMillis());
+            return Try.success(new TileResult(
+                    cached.get().png(), CacheStatus.HIT, cached.get().expiresAtEpochMillis()));
         }
 
         return fetchFromUpstream(z, x, y, key, cached.orElse(null));
     }
 
-    private TileResult fetchFromUpstream(int z, int x, int y, String key, CachedTile previous) {
+    private Try<TileResult> fetchFromUpstream(int z, int x, int y, String key, CachedTile previous) {
         var url = buildTileUrl(z, x, y);
         var etag = previous == null ? null : previous.etag();
         var request = requestFactory.createRequest(url, etag);
@@ -90,12 +91,12 @@ public class OsmTileService {
         if (attempt.isFailure()) {
             var cause = attempt.getCause();
             if (cause instanceof TileFetchException expected) {
-                throw expected;
+                return Try.failure(expected);
             }
             log.error("Failed to fetch upstream tile {}", url, cause);
-            throw new TileFetchException("Upstream tile fetch failed: " + url, cause);
+            return Try.failure(new TileFetchException("Upstream tile fetch failed: " + url, cause));
         }
-        return attempt.get();
+        return attempt;
     }
 
     private TileResult handleResponse(String key, ClassicHttpResponse response, CachedTile previous)
