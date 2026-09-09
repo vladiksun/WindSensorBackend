@@ -1,8 +1,10 @@
 package com.vb.wingfoil;
 
+import com.vb.wingfoil.tiles.TileProxyException;
 import io.micronaut.context.annotation.Requires;
 import io.micronaut.http.HttpRequest;
 import io.micronaut.http.HttpResponse;
+import io.micronaut.http.HttpStatus;
 import io.micronaut.http.hateoas.JsonError;
 import io.micronaut.http.hateoas.Link;
 import io.micronaut.http.server.exceptions.ExceptionHandler;
@@ -15,7 +17,10 @@ public class GlobalExceptionHandler implements ExceptionHandler<Throwable, HttpR
     @Override
     public HttpResponse<JsonError> handle(HttpRequest request, Throwable exception) {
         var error = new JsonError(exception.getMessage()).link(Link.SELF, Link.of(request.getUri()));
+        var status = exception instanceof TileProxyException tileProxyException
+                ? tileProxyException.status()
+                : HttpStatus.INTERNAL_SERVER_ERROR;
 
-        return HttpResponse.<JsonError>serverError().body(error);
+        return HttpResponse.<JsonError>status(status).body(error);
     }
 }

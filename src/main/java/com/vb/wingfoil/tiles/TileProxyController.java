@@ -6,15 +6,12 @@ import io.micronaut.http.MediaType;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.PathVariable;
-import io.micronaut.http.hateoas.JsonError;
 import io.micronaut.scheduling.TaskExecutors;
 import io.micronaut.scheduling.annotation.ExecuteOn;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.vavr.control.Validation;
-import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Single-tile caching proxy for OpenStreetMap slippy-map tiles. This is the only tile-serving route
@@ -24,8 +21,6 @@ import tools.jackson.databind.json.JsonMapper;
 public class TileProxyController {
 
     public static final int MAX_ZOOM_LEVEL = 20;
-
-    private static final JsonMapper JSON_MAPPER = JsonMapper.shared();
 
     private final OsmTileService tileService;
 
@@ -51,8 +46,7 @@ public class TileProxyController {
                 @ApiResponse(responseCode = "502", description = "Upstream tile source unavailable")
             })
     public HttpResponse<byte[]> getTile(@PathVariable int z, @PathVariable int x, @PathVariable int y) {
-        return validateCoordinates(z, x, y)
-                .fold(error -> jsonError(HttpStatus.BAD_REQUEST, error), coordinate -> serveTile(coordinate));
+        return serveTile(validateCoordinates(z, x, y));
     }
 
     private HttpResponse<byte[]> serveTile(TileCoordinate coordinate) {
@@ -64,25 +58,20 @@ public class TileProxyController {
                     .header("X-Cache", result.status().name())
                     .header("Cache-Control", "public, max-age=" + remainingSeconds);
         } catch (OsmTileService.TileFetchException e) {
-            return jsonError(HttpStatus.BAD_GATEWAY, e.getMessage());
+            throw new TileProxyException(HttpStatus.BAD_GATEWAY, e.getMessage(), e);
         }
     }
 
-    private static HttpResponse<byte[]> jsonError(HttpStatus status, String message) {
-        return HttpResponse.<byte[]>status(status)
-                .body(JSON_MAPPER.writeValueAsBytes(new JsonError(message)))
-                .contentType(MediaType.APPLICATION_JSON);
-    }
-
-    private static Validation<String, TileCoordinate> validateCoordinates(int z, int x, int y) {
+    private static TileCoordinate validateCoordinates(int z, int x, int y) {
         if (z < 0 || z > MAX_ZOOM_LEVEL) {
-            return Validation.invalid("zoom level must be between 0 and " + MAX_ZOOM_LEVEL);
+            throw new TileProxyException(HttpStatus.BAD_REQUEST, "zoom level must be between 0 and " + MAX_ZOOM_LEVEL);
         }
         var maxIndex = (1 << z) - 1;
         if (x < 0 || x > maxIndex || y < 0 || y > maxIndex) {
-            return Validation.invalid("tile coordinates must be within [0.." + maxIndex + "] for zoom " + z);
+            throw new TileProxyException(
+                    HttpStatus.BAD_REQUEST, "tile coordinates must be within [0.." + maxIndex + "] for zoom " + z);
         }
-        return Validation.valid(new TileCoordinate(z, x, y));
+        return new TileCoordinate(z, x, y);
     }
 
     /** A slippy-map tile coordinate that has passed {@link #validateCoordinates(int, int, int)}. */
