@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.vavr.control.Validation;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -50,13 +51,13 @@ public class TileProxyController {
                 @ApiResponse(responseCode = "502", description = "Upstream tile source unavailable")
             })
     public HttpResponse<byte[]> getTile(@PathVariable int z, @PathVariable int x, @PathVariable int y) {
-        var validationError = validateCoordinates(z, x, y);
-        if (validationError != null) {
-            return jsonError(HttpStatus.BAD_REQUEST, validationError);
-        }
+        return validateCoordinates(z, x, y)
+                .fold(error -> jsonError(HttpStatus.BAD_REQUEST, error), coordinate -> serveTile(coordinate));
+    }
 
+    private HttpResponse<byte[]> serveTile(TileCoordinate coordinate) {
         try {
-            var result = tileService.getTile(z, x, y);
+            var result = tileService.getTile(coordinate.z(), coordinate.x(), coordinate.y());
             var remainingSeconds = Math.max(0L, (result.expiresAtEpochMillis() - System.currentTimeMillis()) / 1000);
             return HttpResponse.ok(result.png())
                     .contentType(MediaType.IMAGE_PNG)
@@ -73,14 +74,17 @@ public class TileProxyController {
                 .contentType(MediaType.APPLICATION_JSON);
     }
 
-    private static String validateCoordinates(int z, int x, int y) {
+    private static Validation<String, TileCoordinate> validateCoordinates(int z, int x, int y) {
         if (z < 0 || z > MAX_ZOOM_LEVEL) {
-            return "zoom level must be between 0 and " + MAX_ZOOM_LEVEL;
+            return Validation.invalid("zoom level must be between 0 and " + MAX_ZOOM_LEVEL);
         }
         var maxIndex = (1 << z) - 1;
         if (x < 0 || x > maxIndex || y < 0 || y > maxIndex) {
-            return "tile coordinates must be within [0.." + maxIndex + "] for zoom " + z;
+            return Validation.invalid("tile coordinates must be within [0.." + maxIndex + "] for zoom " + z);
         }
-        return null;
+        return Validation.valid(new TileCoordinate(z, x, y));
     }
+
+    /** A slippy-map tile coordinate that has passed {@link #validateCoordinates(int, int, int)}. */
+    private record TileCoordinate(int z, int x, int y) {}
 }
