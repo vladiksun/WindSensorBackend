@@ -1,0 +1,122 @@
+[
+  {
+    "id": "option-null-safety",
+    "query": "How do I handle a Java method that might return null when using Vavr Option in Java?",
+    "assertion": "Response must mention Option.map() does not swallow null, and recommend flatMap with Option.of() or Option.ofNullable() to handle null values safely.",
+    "keywords": ["Option", "flatMap", "null", "Some", "None", "map"]
+  },
+  {
+    "id": "try-exception-handling",
+    "query": "Convert this try-catch block to use Vavr: try { parse(input) } catch (Exception e) { log(e); return defaultValue; }",
+    "assertion": "Response must show Try.of() wrapping the risky operation, with onFailure for logging and getOrElse for the default value.",
+    "keywords": ["Try", "of", "onFailure", "getOrElse"]
+  },
+  {
+    "id": "either-error-success",
+    "query": "I need a function that returns either a parsing error message or a parsed integer. How do I model this with Vavr?",
+    "assertion": "Response must use Either with Left for error and Right for success, showing Either.left() and Either.right().",
+    "keywords": ["Either", "left", "right", "error", "success"]
+  },
+  {
+    "id": "validation-accumulate-errors",
+    "query": "How do I validate multiple fields and collect all errors instead of stopping at the first one using Vavr?",
+    "assertion": "Response must use Validation.combine() with Validation.valid() and Validation.invalid(), and show .ap() to construct the result.",
+    "keywords": ["Validation", "combine", "invalid", "valid", "ap"]
+  },
+  {
+    "id": "function-lifting",
+    "query": "I have a function that throws ArithmeticException on divide by zero. How can I make it return Option instead of throwing?",
+    "assertion": "Response must use Function.lift() to convert the partial function into a total one that returns Option.",
+    "keywords": ["lift", "Function", "Option", "partial"]
+  },
+  {
+    "id": "function-composition",
+    "query": "How do I chain two Vavr Function1 operations so one runs after the other?",
+    "assertion": "Response must show compose() or andThen() for function composition.",
+    "keywords": ["compose", "andThen", "Function1"]
+  },
+  {
+    "id": "partial-application",
+    "query": "How do I fix the first argument of a Vavr Function2 to create a Function1?",
+    "assertion": "Response must show partial application using .apply(fixedValue) on a Function2.",
+    "keywords": ["apply", "partial", "Function2", "Function1"]
+  },
+  {
+    "id": "currying",
+    "query": "What is the difference between partial application and currying in Vavr?",
+    "assertion": "Response must explain that partial application reduces arity by N fixed args while currying always produces a chain of Function1s.",
+    "keywords": ["curried", "partial application", "arity", "Function1"]
+  },
+  {
+    "id": "lazy-deferred-computation",
+    "query": "How do I create a lazily evaluated value in Vavr that only computes once and caches the result?",
+    "assertion": "Response must use Lazy.of() and demonstrate get() and isEvaluated().",
+    "keywords": ["Lazy", "of", "get", "isEvaluated", "memoized"]
+  },
+  {
+    "id": "tuple-bimap",
+    "query": "How do I transform both elements of a Vavr Tuple2 independently?",
+    "assertion": "Response must show Tuple2.map() with two lambdas (bimap style) or the single transform function variant.",
+    "keywords": ["Tuple2", "map", "bimap"]
+  },
+  {
+    "id": "pattern-matching-basics",
+    "query": "How do I write a match-expression in Vavr that returns a String based on an integer value?",
+    "assertion": "Response must use Match().of() with Case() patterns and a wildcard Case($()) as fallback.",
+    "keywords": ["Match", "Case", "wildcard", "of"]
+  },
+  {
+    "id": "pattern-matching-types",
+    "query": "How do I match on different exception types in Vavr to handle each one differently?",
+    "assertion": "Response must use Match with Case($(instanceOf(...))) patterns.",
+    "keywords": ["instanceOf", "Match", "Case"]
+  },
+  {
+    "id": "pattern-matching-vavr-types",
+    "query": "How do I pattern match on a Vavr Try to handle Success and Failure cases?",
+    "assertion": "Response must use $Success() and $Failure() predefined patterns from io.vavr.Patterns.",
+    "keywords": ["$Success", "$Failure", "Patterns"]
+  },
+  {
+    "id": "match-run-side-effect",
+    "query": "How do I execute a side-effect like printing or throwing inside a Vavr Match Case?",
+    "assertion": "Response must wrap run() inside a lambda (e.g., o -> run(...)) and warn against using run() directly as the Case return value.",
+    "keywords": ["run", "lambda", "eagerly", "side-effect"]
+  },
+  {
+    "id": "vavr-vs-java-collections",
+    "query": "Why should I use Vavr List instead of Java's ArrayList for functional code?",
+    "assertion": "Response must mention immutability, persistent data structures, fluent chaining without stream() boilerplate, and thread-safety.",
+    "keywords": ["immutable", "persistent", "stream", "fluent", "thread-safe"]
+  },
+  {
+    "id": "collection-choice",
+    "query": "Which Vavr collection should I use when I need fast random access to elements by index?",
+    "assertion": "Response must recommend Vector for O(1) effective random access with immutability.",
+    "keywords": ["Vector", "random access", "O(1)"]
+  },
+  {
+    "id": "stream-infinite-sequence",
+    "query": "How do I create an infinite sequence of even numbers starting from 2 using Vavr?",
+    "assertion": "Response must use Stream.from() with filter and/or map to produce even numbers.",
+    "keywords": ["Stream", "from", "filter", "infinite"]
+  },
+  {
+    "id": "memoization",
+    "query": "How do I cache the result of an expensive Vavr function so it only computes once per input?",
+    "assertion": "Response must use .memoized() on a Vavr Function.",
+    "keywords": ["memoized", "cache", "Function"]
+  },
+  {
+    "id": "option-getOrElse",
+    "query": "How do I provide a default value when a Vavr Option is None?",
+    "assertion": "Response must show getOrElse() or orElseCompute() for providing defaults.",
+    "keywords": ["getOrElse", "orElseCompute", "default", "None"]
+  },
+  {
+    "id": "try-recover-specific",
+    "query": "How do I recover from specific exception types in a Vavr Try, like catching IOException differently from TimeoutException?",
+    "assertion": "Response must show Try.recover() combined with Match to dispatch on exception type.",
+    "keywords": ["recover", "Match", "instanceOf", "Try"]
+  }
+]
