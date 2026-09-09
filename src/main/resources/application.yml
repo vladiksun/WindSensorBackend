@@ -4,7 +4,7 @@ micronaut:
     ssl:
       enabled: ${SSL_ENABLED:true}
       ssl-redirect: false
-      port: 443
+      port: 4433
       buildSelfSigned: false
       key-store:
         path: ${KEY_STORE_PATH:`classpath:keystore.p12`}
@@ -60,3 +60,26 @@ wind-sensor:
   spots-test-data-url: ${SPOTS_TEST_DATA_URL:`https://raw.githubusercontent.com/vladiksun/WindSensorConfig/refs/heads/main/spots_test.json`}
   spots-dahab-url: ${SPOTS_DAHAB_URL:`https://raw.githubusercontent.com/vladiksun/WindSensorConfig/refs/heads/main/spots_dahab.json`}
   spots-data-media-type: ${SPOTS_DATA_MEDIA_TYPE:`text/plain`}
+
+########################################################################################################################
+
+# Caching proxy for OpenStreetMap slippy-map tiles (OSM tile usage policy compliance).
+# Outbound requests always carry the identifying User-Agent/Referer below; tiles are cached
+# locally (EhCache, file-system persistence) honouring upstream Cache-Control/Expires/Etag,
+# falling back to min-ttl when those headers are absent or unreadable.
+osm-tiles:
+  base-url: ${OSM_TILES_BASE_URL:`https://tile.openstreetmap.org`}
+  user-agent: "${OSM_TILES_USER_AGENT:`WindSensor/1.0 (+https://github.com/vladiksun/WindSensor; contact: vladiksun@gmail.com)`}"
+  referer: ${OSM_TILES_REFERER:`https://github.com/vladiksun/WindSensor`}
+  min-ttl: 7d
+
+# EhCache storage engine backing the osm-tiles cache (heap tier keeps hot tiles fast,
+# disk tier persists under storage-path so tiles survive container restarts).
+ehcache:
+  storage-path: ${EHCACHE_STORAGE_PATH:`/tmp/windsensorbackend/ehcache`}
+  caches:
+    osm-tiles:
+      heap:
+        max-entries: 100
+      disk:
+        max-size: 1Gb

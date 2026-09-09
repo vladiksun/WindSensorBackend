@@ -3,3 +3,7 @@ micronaut:
     port: 8080
     ssl:
       enabled: false
+
+# Keep EhCache disk writes out of /var/lib during tests (not writable without root).
+ehcache:
+  storage-path: ${java.io.tmpdir}/windsensorbackend-test-ehcache

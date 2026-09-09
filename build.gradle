@@ -25,6 +25,9 @@ dependencies {
     implementation("io.micronaut:micronaut-management")
     implementation("io.micronaut.micrometer:micronaut-micrometer-core")
 
+    implementation("io.micronaut.cache:micronaut-cache-core:6.0.0")
+    implementation("io.micronaut.cache:micronaut-cache-ehcache:6.0.0")
+
     implementation("io.vavr:vavr:0.10.6")
     implementation("org.apache.httpcomponents.client5:httpclient5:5.5")
     implementation("org.jsoup:jsoup:1.23.2")
