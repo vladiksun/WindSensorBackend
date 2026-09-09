@@ -342,7 +342,19 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
                                       {
                                         "id": "windy-1",
                                         "provider": "windy",
-                                        "label": "Anapa Beach"
+                                        "label": "Anapa Beach",
+                                        "tiles": [
+                                          {
+                                            "tileLabel": "Anapa North",
+                                            "latitude": 45.3798,
+                                            "longitude": 36.0820
+                                          },
+                                          {
+                                            "tileLabel": "Anapa South",
+                                            "latitude": 45.3600,
+                                            "longitude": 36.0900
+                                          }
+                                        ]
                                       }
                                     ]
                                   },
@@ -354,7 +366,14 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
                                       {
                                         "id": "windy-2",
                                         "provider": "windy",
-                                        "label": "Sochi Port"
+                                        "label": "Sochi Port",
+                                        "tiles": [
+                                          {
+                                            "tileLabel": "Sochi Port West",
+                                            "latitude": 43.5855,
+                                            "longitude": 39.7231
+                                          }
+                                        ]
                                       }
                                     ]
                                   }
@@ -372,8 +391,19 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
                 .body("[0].numberOfReadings", is(5))
                 .body("[0].sensors.size()", is(1))
                 .body("[0].sensors[0].id", is("windy-1"))
+                .body("[0].sensors[0].tiles.size()", is(2))
+                .body("[0].sensors[0].tiles[0].tileLabel", is("Anapa North"))
+                .body("[0].sensors[0].tiles[0].latitude", is(45.3798f))
+                .body("[0].sensors[0].tiles[0].longitude", is(36.0820f))
+                .body("[0].sensors[0].tiles[1].tileLabel", is("Anapa South"))
+                .body("[0].sensors[0].tiles[1].latitude", is(45.3600f))
+                .body("[0].sensors[0].tiles[1].longitude", is(36.0900f))
                 .body("[1].location", is("Sochi"))
-                .body("[1].readingWindow", is(7200));
+                .body("[1].readingWindow", is(7200))
+                .body("[1].sensors[0].tiles.size()", is(1))
+                .body("[1].sensors[0].tiles[0].tileLabel", is("Sochi Port West"))
+                .body("[1].sensors[0].tiles[0].latitude", is(43.5855f))
+                .body("[1].sensors[0].tiles[0].longitude", is(39.7231f));
 
         verifyMockServerRequest("GET", "/api/spots", 1);
     }
@@ -395,7 +425,14 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
                                       {
                                         "id": "test-1",
                                         "provider": "windy",
-                                        "label": "Test Sensor"
+                                        "label": "Test Sensor",
+                                        "tiles": [
+                                          {
+                                            "tileLabel": "Test Spot Tile",
+                                            "latitude": 27.2566,
+                                            "longitude": 33.8129
+                                          }
+                                        ]
                                       }
                                     ]
                                   }
@@ -411,7 +448,11 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
                 .body("[0].location", is("Test Spot"))
                 .body("[0].readingWindow", is(1800))
                 .body("[0].numberOfReadings", is(3))
-                .body("[0].sensors[0].id", is("test-1"));
+                .body("[0].sensors[0].id", is("test-1"))
+                .body("[0].sensors[0].tiles.size()", is(1))
+                .body("[0].sensors[0].tiles[0].tileLabel", is("Test Spot Tile"))
+                .body("[0].sensors[0].tiles[0].latitude", is(27.2566f))
+                .body("[0].sensors[0].tiles[0].longitude", is(33.8129f));
 
         verifyMockServerRequest("GET", "/api/spots-test", 1);
     }
@@ -433,12 +474,26 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
                                       {
                                         "id": "dahab-1",
                                         "provider": "neduet",
-                                        "label": "Dahab Blue Hole"
+                                        "label": "Dahab Blue Hole",
+                                        "tiles": [
+                                          {
+                                            "tileLabel": "Blue Hole North",
+                                            "latitude": 28.5369,
+                                            "longitude": 34.5710
+                                          }
+                                        ]
                                       },
                                       {
                                         "id": "dahab-2",
                                         "provider": "windy",
-                                        "label": "Dahab Lagoon"
+                                        "label": "Dahab Lagoon",
+                                        "tiles": [
+                                          {
+                                            "tileLabel": "Lagoon West",
+                                            "latitude": 28.5280,
+                                            "longitude": 34.5560
+                                          }
+                                        ]
                                       }
                                     ]
                                   }
@@ -456,7 +511,15 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
                 .body("[0].numberOfReadings", is(8))
                 .body("[0].sensors.size()", is(2))
                 .body("[0].sensors[0].id", is("dahab-1"))
-                .body("[0].sensors[1].id", is("dahab-2"));
+                .body("[0].sensors[0].tiles.size()", is(1))
+                .body("[0].sensors[0].tiles[0].tileLabel", is("Blue Hole North"))
+                .body("[0].sensors[0].tiles[0].latitude", is(28.5369f))
+                .body("[0].sensors[0].tiles[0].longitude", is(34.5710f))
+                .body("[0].sensors[1].id", is("dahab-2"))
+                .body("[0].sensors[1].tiles.size()", is(1))
+                .body("[0].sensors[1].tiles[0].tileLabel", is("Lagoon West"))
+                .body("[0].sensors[1].tiles[0].latitude", is(28.5280f))
+                .body("[0].sensors[1].tiles[0].longitude", is(34.5560f));
 
         verifyMockServerRequest("GET", "/api/spots-dahab", 1);
     }
@@ -476,6 +539,44 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
                 .then()
                 .statusCode(200)
                 .body("size()", is(0));
+
+        verifyMockServerRequest("GET", "/api/spots", 1);
+    }
+
+    @Test
+    void shouldHandleSensorsWithoutTiles(RequestSpecification spec) {
+        mockServerClient
+                .when(request().withMethod("GET").withPath("/api/spots"))
+                .respond(response()
+                        .withStatusCode(200)
+                        .withHeaders(new Header("Content-Type", "application/json; charset=utf-8"))
+                        .withBody(json("""
+                                [
+                                  {
+                                    "location": "Legacy Spot",
+                                    "readingWindow": 3600,
+                                    "numberOfReadings": 5,
+                                    "sensors": [
+                                      {
+                                        "id": "legacy-1",
+                                        "provider": "windy",
+                                        "label": "Legacy Sensor"
+                                      }
+                                    ]
+                                  }
+                                ]
+                                """)));
+
+        spec.contentType(ContentType.JSON)
+                .when()
+                .get("/spots-data")
+                .then()
+                .statusCode(200)
+                .body("size()", is(1))
+                .body("[0].location", is("Legacy Spot"))
+                .body("[0].sensors.size()", is(1))
+                .body("[0].sensors[0].id", is("legacy-1"))
+                .body("[0].sensors[0].label", is("Legacy Sensor"));
 
         verifyMockServerRequest("GET", "/api/spots", 1);
     }
