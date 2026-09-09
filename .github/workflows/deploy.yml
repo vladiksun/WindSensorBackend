@@ -28,7 +28,16 @@ jobs:
         run: ./gradlew --no-daemon jibBuildTar
 
       - name: Install sshpass
-        run: sudo apt-get install -y sshpass
+        run: |
+          # Remove the pre-configured Google Chrome repo (not needed) to
+          # avoid intermittent "Hash Sum mismatch" from dl.google.com.
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list
+          for i in 1 2 3; do
+            if sudo apt-get update; then break; fi
+            echo "apt-get update failed (attempt $i), retrying..."
+            sleep 5
+          done
+          sudo apt-get install -y sshpass
 
       - name: Create remote directory
         run: |
@@ -51,9 +60,7 @@ jobs:
           ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/home/WindSensorBackend/
 
       - name: Install curl and jq
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y curl jq
+        run: sudo apt-get install -y curl jq
 
       - name: Load image and restart container
         run: |
