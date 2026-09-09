@@ -62,7 +62,9 @@ final class TileExpiryParser {
         try {
             // HTTP dates are RFC 1123 ("Wed, 21 Oct 2015 07:28:00 GMT"); accept ISO-8601 too.
             var trimmed = value.trim();
-            return ZonedDateTime.parse(trimmed, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().toEpochMilli();
+            return ZonedDateTime.parse(trimmed, DateTimeFormatter.RFC_1123_DATE_TIME)
+                    .toInstant()
+                    .toEpochMilli();
         } catch (Exception e) {
             try {
                 return ZonedDateTime.parse(value.trim()).toInstant().toEpochMilli();

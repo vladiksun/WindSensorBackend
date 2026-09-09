@@ -19,6 +19,13 @@ public class OsmTilesConfiguration {
 
     private Duration minTtl;
 
+    /**
+     * File-system location of the tile cache. Mirrors {@code ehcache.storage-path} (both are driven
+     * by the same {@code EHCACHE_STORAGE_PATH} env var); kept here so the tile proxy's persistence
+     * location is visible alongside its other settings.
+     */
+    private String ehcacheStoragePath;
+
     public String getBaseUrl() {
         return baseUrl;
     }
@@ -50,5 +57,13 @@ public class OsmTilesConfiguration {
 
     public void setMinTtl(Duration minTtl) {
         this.minTtl = minTtl;
+    }
+
+    public String getEhcacheStoragePath() {
+        return ehcacheStoragePath;
+    }
+
+    public void setEhcacheStoragePath(String ehcacheStoragePath) {
+        this.ehcacheStoragePath = ehcacheStoragePath;
     }
 }

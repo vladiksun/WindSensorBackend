@@ -69,8 +69,8 @@ class OsmTileServiceTest implements TestPropertyProvider {
     @BeforeEach
     void initBeans(ApplicationContext ctx) {
         this.tileService = ctx.getBean(OsmTileService.class);
-        this.tileCache =
-                (SyncCache<Cache>) ctx.findBean(SyncCache.class, Qualifiers.byName(OsmTileService.CACHE_NAME)).orElseThrow();
+        this.tileCache = (SyncCache<Cache>) ctx.findBean(SyncCache.class, Qualifiers.byName(OsmTileService.CACHE_NAME))
+                .orElseThrow();
     }
 
     @Override
@@ -143,7 +143,8 @@ class OsmTileServiceTest implements TestPropertyProvider {
         assertEquals(OsmTileService.CacheStatus.MISS, result.status());
         // expiresAt is computed at fetch time (slightly before this assertion), so allow a small slack.
         assertTrue(
-                result.expiresAtEpochMillis() >= System.currentTimeMillis() + Duration.ofDays(7).toMillis() - 5_000,
+                result.expiresAtEpochMillis()
+                        >= System.currentTimeMillis() + Duration.ofDays(7).toMillis() - 5_000,
                 "entries without usable cache headers stay valid for at least 7 days");
     }
 
@@ -154,7 +155,8 @@ class OsmTileServiceTest implements TestPropertyProvider {
         assertEquals(OsmTileService.CacheStatus.MISS, result.status());
         // The stub sends Expires = now + 30 days, beyond the 7-day min-ttl floor, so a value near
         // 30 days proves the header was parsed and honoured (a parse failure would yield ~7 days).
-        var expected = ZonedDateTime.now(ZoneOffset.UTC).plusDays(30).toInstant().toEpochMilli();
+        var expected =
+                ZonedDateTime.now(ZoneOffset.UTC).plusDays(30).toInstant().toEpochMilli();
         assertTrue(
                 Math.abs(result.expiresAtEpochMillis() - expected)
                         < Duration.ofMinutes(5).toMillis(),

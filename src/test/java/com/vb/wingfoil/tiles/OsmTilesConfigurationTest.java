@@ -24,5 +24,6 @@ class OsmTilesConfigurationTest {
                 config.getUserAgent());
         assertEquals("https://github.com/vladiksun/WindSensor", config.getReferer());
         assertEquals(Duration.ofDays(7), config.getMinTtl());
+        assertEquals("/tmp/windsensorbackend/ehcache", config.getEhcacheStoragePath());
     }
 }

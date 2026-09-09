@@ -8,6 +8,9 @@ services:
       - "443:443"
     volumes:
       - /home/keystore.p12:/home/keystore.p12:ro
+      # Persist the EhCache tile cache on the host so cached tiles survive container restarts.
+      - ./ehcache:/tmp/windsensorbackend/ehcache
     environment:
       KEY_STORE_PATH: "file:/home/keystore.p12"
+      EHCACHE_STORAGE_PATH: "/tmp/windsensorbackend/ehcache"
     restart: always
