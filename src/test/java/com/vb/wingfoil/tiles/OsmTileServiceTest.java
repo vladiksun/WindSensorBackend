@@ -2,6 +2,7 @@ package com.vb.wingfoil.tiles;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sun.net.httpserver.HttpExchange;
@@ -14,6 +15,8 @@ import io.micronaut.test.support.TestPropertyProvider;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -56,6 +59,8 @@ class OsmTileServiceTest implements TestPropertyProvider {
 
     static int port;
 
+    static Path cacheDir;
+
     static final Map<String, AtomicInteger> REQUEST_COUNTS = new ConcurrentHashMap<>();
 
     private OsmTileService tileService;
@@ -70,6 +75,10 @@ class OsmTileServiceTest implements TestPropertyProvider {
         this.tileService = ctx.getBean(OsmTileService.class);
         this.tileCache = (SyncCache<Cache>) ctx.findBean(SyncCache.class, Qualifiers.byName(OsmTileService.CACHE_NAME))
                 .orElseThrow();
+        // Tests may run in any order and share the class-level cache/context, so every test starts
+        // from an empty cache and a zeroed upstream request counter.
+        REQUEST_COUNTS.clear();
+        tileCache.invalidateAll();
     }
 
     @Override
@@ -77,17 +86,25 @@ class OsmTileServiceTest implements TestPropertyProvider {
         try {
             stubServer = startStubServer();
             port = stubServer.getAddress().getPort();
+            // A fresh EhCache storage dir per run keeps the cache empty, so MISS/HIT assertions do
+            // not depend on entries left behind by earlier runs or other test classes.
+            cacheDir = Files.createTempDirectory("windsensorbackend-test-ehcache");
         } catch (IOException e) {
             throw new IllegalStateException("Failed to start stub tile server", e);
         }
-        // ehcache.storage-path comes from application-test.yml (kept out of /var/lib in tests).
-        return Map.of("osm-tiles.base-url", "http://127.0.0.1:" + port);
+        return Map.of("osm-tiles.base-url", "http://127.0.0.1:" + port, "ehcache.storage-path", cacheDir.toString());
     }
 
     @AfterAll
-    void stopStubServer() {
+    void stopStubServer() throws IOException {
         if (stubServer != null) {
             stubServer.stop(0);
+        }
+        if (cacheDir != null) {
+            try (var files = Files.walk(cacheDir)) {
+                files.sorted(java.util.Comparator.reverseOrder())
+                        .forEach(p -> p.toFile().delete());
+            }
         }
     }
 
@@ -108,6 +125,31 @@ class OsmTileServiceTest implements TestPropertyProvider {
         assertEquals(OsmTileService.CacheStatus.HIT, second.status());
         assertArrayEquals(first.png(), second.png());
         assertEquals(1, countOf(TILE_MAX_AGE), "second lookup within validity must not touch upstream");
+    }
+
+    @Test
+    void skipCacheTrueForcesUpstreamFetchAndStillPopulatesCache() {
+        // Warm the cache with a valid entry.
+        var first = tileService.getTile(15, 16384, 20480).get();
+        assertEquals(OsmTileService.CacheStatus.MISS, first.status());
+        assertEquals(1, countOf(TILE_MAX_AGE), "warm-up must fetch upstream");
+
+        // A normal lookup within validity is served from cache.
+        var cached = tileService.getTile(15, 16384, 20480).get();
+        assertEquals(OsmTileService.CacheStatus.HIT, cached.status());
+        assertEquals(1, countOf(TILE_MAX_AGE), "lookup without skipCache must not touch upstream");
+
+        // skipCache=true bypasses the valid entry and refetches; the stub answers the conditional
+        // request (If-None-Match: "v1") with 304, so the status is REVALIDATED, never HIT.
+        var forced = tileService.getTile(15, 16384, 20480, true).get();
+        assertNotEquals(OsmTileService.CacheStatus.HIT, forced.status(), "skipCache=true must not serve from cache");
+        assertEquals(2, countOf(TILE_MAX_AGE), "skipCache=true must contact upstream");
+        assertArrayEquals(PNG_BYTES, forced.png());
+
+        // The forced fetch refreshed the entry, so the next normal lookup hits the cache again.
+        var after = tileService.getTile(15, 16384, 20480).get();
+        assertEquals(OsmTileService.CacheStatus.HIT, after.status());
+        assertEquals(2, countOf(TILE_MAX_AGE), "entry written by skipCache=true fetch must be servable");
     }
 
     private static int countOf(String tilePath) {

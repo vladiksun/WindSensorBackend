@@ -58,16 +58,24 @@ public class OsmTileService {
     }
 
     /**
+     * @param skipCache when {@code true}, the local cache is not consulted and the tile is always
+     *        fetched from upstream; the fresh result is still stored in the cache so subsequent
+     *        normal lookups can be served from it
      * @return a {@link Try} containing the tile bytes plus cache status and validity window;
      *         a {@code Failure} carrying a {@link TileFetchException} when the upstream fetch
      *         fails (non-2xx or IO error)
      */
     public Try<TileResult> getTile(int z, int x, int y) {
+        return getTile(z, x, y, false);
+    }
+
+    public Try<TileResult> getTile(int z, int x, int y, boolean skipCache) {
         var key = tileKey(z, x, y);
         var now = System.currentTimeMillis();
-
+        // The previous entry is only needed for its Etag (conditional refetch), never to serve
+        // the response itself, so it is read even when the cache-hit short-circuit is skipped.
         var cached = tileCache.get(key, CachedTile.class);
-        if (cached.isPresent() && cached.get().expiresAtEpochMillis() > now) {
+        if (!skipCache && cached.isPresent() && cached.get().expiresAtEpochMillis() > now) {
             return Try.success(new TileResult(
                     cached.get().png(), CacheStatus.HIT, cached.get().expiresAtEpochMillis()));
         }

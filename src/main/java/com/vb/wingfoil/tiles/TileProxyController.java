@@ -6,9 +6,11 @@ import io.micronaut.http.MediaType;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.PathVariable;
+import io.micronaut.http.annotation.QueryValue;
 import io.micronaut.scheduling.TaskExecutors;
 import io.micronaut.scheduling.annotation.ExecuteOn;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -33,7 +35,7 @@ public class TileProxyController {
     @Operation(
             summary = "Fetch a single OpenStreetMap slippy-map tile",
             description =
-                    "Caching proxy for one OSM tile ({z}/{x}/{y}). Data © OpenStreetMap contributors, CC-BY-SA. See https://www.openstreetmap.org/copyright.",
+                    "Caching proxy for one OSM tile ({z}/{x}/{y}). Data © OpenStreetMap contributors, CC-BY-SA. See https://www.openstreetmap.org/copyright. Optional query parameter skipCache=true forces a fresh upstream fetch (the fetched tile is still cached).",
             responses = {
                 @ApiResponse(
                         responseCode = "200",
@@ -45,13 +47,22 @@ public class TileProxyController {
                 @ApiResponse(responseCode = "400", description = "Invalid tile coordinates"),
                 @ApiResponse(responseCode = "502", description = "Upstream tile source unavailable")
             })
-    public HttpResponse<byte[]> getTile(@PathVariable int z, @PathVariable int x, @PathVariable int y) {
-        return serveTile(validateCoordinates(z, x, y));
+    public HttpResponse<byte[]> getTile(
+            @PathVariable int z,
+            @PathVariable int x,
+            @PathVariable int y,
+            @QueryValue(defaultValue = "false")
+                    @Parameter(
+                            description =
+                                    "When true, bypasses the local cache and forces a fresh fetch from the upstream source; the fetched tile is still stored in the local cache so subsequent requests without this parameter can be served from it. Defaults to false.",
+                            schema = @Schema(type = "boolean", defaultValue = "false"))
+                    boolean skipCache) {
+        return serveTile(validateCoordinates(z, x, y), skipCache);
     }
 
-    private HttpResponse<byte[]> serveTile(TileCoordinate coordinate) {
+    private HttpResponse<byte[]> serveTile(TileCoordinate coordinate, boolean skipCache) {
         return tileService
-                .getTile(coordinate.z(), coordinate.x(), coordinate.y())
+                .getTile(coordinate.z(), coordinate.x(), coordinate.y(), skipCache)
                 .map(result -> {
                     var remainingSeconds =
                             Math.max(0L, (result.expiresAtEpochMillis() - System.currentTimeMillis()) / 1000);

@@ -4,22 +4,33 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import io.micronaut.test.support.TestPropertyProvider;
 import io.restassured.specification.RequestSpecification;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
+import java.util.Set;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestMethodOrder;
 
 /**
  * End-to-end tile proxy test against the real upstream source ({@code tile.openstreetmap.org}).
  * Requires internet access. The watch app's fixed GPS coordinates and Web-Mercator centre-tile
  * math from {@code MapTileLoader.computeTiles} are replicated below so drift in the formula is
- * caught.
+ * caught. A fresh EhCache storage directory per run keeps the cache empty, so MISS/HIT assertions
+ * do not depend on entries left behind by earlier runs.
  */
 @MicronautTest
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class OsmTileProxyIntegrationTest implements TestPropertyProvider {
 
     /** FIXED_GPS_COORDINATES = [60.068347, 30.002349] as [latitude, longitude] in Commons.mc. */
@@ -29,10 +40,26 @@ class OsmTileProxyIntegrationTest implements TestPropertyProvider {
 
     private static final int ZOOM = 15;
 
+    static Path cacheDir;
+
     @Override
     public Map<String, String> getProperties() {
-        // ehcache.storage-path comes from application-test.yml (kept out of /var/lib in tests).
-        return Map.of("micronaut.server.ssl.enabled", "false");
+        try {
+            cacheDir = Files.createTempDirectory("windsensorbackend-test-ehcache");
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to create temp EhCache storage dir", e);
+        }
+        return Map.of("micronaut.server.ssl.enabled", "false", "ehcache.storage-path", cacheDir.toString());
+    }
+
+    @AfterAll
+    void removeCacheDir() throws IOException {
+        if (cacheDir != null) {
+            try (var files = Files.walk(cacheDir)) {
+                files.sorted(java.util.Comparator.reverseOrder())
+                        .forEach(p -> p.toFile().delete());
+            }
+        }
     }
 
     @Test
@@ -44,11 +71,13 @@ class OsmTileProxyIntegrationTest implements TestPropertyProvider {
         assertEquals(9503, tile.y());
     }
 
+    @Order(1)
     @Test
     void realTileIsFetchedThenServedFromCache(RequestSpecification spec) {
         var tile = computeCentreTile(FIXED_LATITUDE, FIXED_LONGITUDE, ZOOM);
         var path = "/tiles/" + tile.z() + "/" + tile.x() + "/" + tile.y() + ".png";
 
+        // Runs first on a cold cache (fresh storage dir per run), so the first request must be a MISS.
         var first = given(spec).accept("image/png").when().get(path);
         first.then().statusCode(is(200)).contentType("image/png").header("X-Cache", "MISS");
         var firstBytes = first.getBody().asByteArray();
@@ -60,6 +89,38 @@ class OsmTileProxyIntegrationTest implements TestPropertyProvider {
         var second = given(spec).accept("image/png").when().get(path);
         second.then().statusCode(is(200)).contentType("image/png").header("X-Cache", "HIT");
         assertArrayEquals(firstBytes, second.getBody().asByteArray(), "second lookup must serve the cached bytes");
+    }
+
+    @Order(2)
+    @Test
+    void skipCacheParameterForcesUpstreamFetch(RequestSpecification spec) {
+        var tile = computeCentreTile(FIXED_LATITUDE, FIXED_LONGITUDE, ZOOM);
+        var path = "/tiles/" + tile.z() + "/" + tile.x() + "/" + tile.y() + ".png";
+
+        // Warm the cache so a plain request would be served from it.
+        given(spec).accept("image/png").when().get(path).then().statusCode(is(200));
+        given(spec)
+                .accept("image/png")
+                .when()
+                .get(path)
+                .then()
+                .statusCode(is(200))
+                .header("X-Cache", "HIT");
+
+        // skipCache=true must bypass the valid entry and go to upstream (never HIT).
+        var forced = given(spec).accept("image/png").when().get(path + "?skipCache=true");
+        forced.then().statusCode(is(200)).contentType("image/png");
+        var xCache = forced.getHeader("X-Cache");
+        assertTrue(Set.of("MISS", "REVALIDATED").contains(xCache), "skipCache=true must not serve from cache");
+
+        // The forced fetch repopulated the cache, so a plain request hits again.
+        given(spec)
+                .accept("image/png")
+                .when()
+                .get(path)
+                .then()
+                .statusCode(is(200))
+                .header("X-Cache", "HIT");
     }
 
     record Tile(int z, int x, int y) {}
