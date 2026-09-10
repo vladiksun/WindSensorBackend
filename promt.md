@@ -4,6 +4,14 @@ update memory bank
 ########################################################################################################################
 /opsx:explore ──► /opsx:propose ──► /opsx:apply ──► /opsx:sync ──► /opsx:archive
 ########################################################################################################################
+/opsx:archive add-osm-tile-proxy
+archive without sync
+
+########################################################################################################################
+
+/opsx:propose
+com.vb.wingfoil.tiles.TileProxyController.getTile add parameter to skip the cache - skipCache = true/false
+Call example https://localhost:443/tiles/15/19114/9503.png?skipCache=true
 
 ########################################################################################################################
 
