@@ -10,6 +10,16 @@ archive without sync
 ########################################################################################################################
 
 /opsx:propose
+Read D:\development\Projects\GIT_MY\WindSensor\openspec\changes\optimize-map-tile-loading\tasks.md
+Here we need to implement Backend functionality
+## 1. Backend — Composite Tile Service
+## 2. Backend — Composite Endpoint Controller
+## 3. Backend — Deploy & Verify
+The task is to make optimization on backend side according to D:\development\Projects\GIT_MY\WindSensor\openspec\changes\optimize-map-tile-loading\proposal.md
+
+########################################################################################################################
+
+/opsx:propose
 com.vb.wingfoil.tiles.TileProxyController.getTile add parameter to skip the cache - skipCache = true/false
 Call example https://localhost:443/tiles/15/19114/9503.png?skipCache=true
 

@@ -86,3 +86,11 @@ ehcache:
         max-entries: 100
       disk:
         max-size: 1Gb
+    # Composed viewport images are far larger than single tiles (~256 KB vs ~30 KB), so the heap
+    # tier holds fewer entries while the disk tier gets more room. Same file-system persistence as
+    # osm-tiles so composites also survive container restarts.
+    osm-composites:
+      heap:
+        max-entries: 50
+      disk:
+        max-size: 2Gb

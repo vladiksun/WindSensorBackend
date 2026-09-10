@@ -26,8 +26,11 @@ public class TileProxyController {
 
     private final OsmTileService tileService;
 
-    public TileProxyController(OsmTileService tileService) {
+    private final TileCompositeService compositeService;
+
+    public TileProxyController(OsmTileService tileService, TileCompositeService compositeService) {
         this.tileService = tileService;
+        this.compositeService = compositeService;
     }
 
     @Get(uri = "/{z}/{x}/{y}.png", produces = MediaType.IMAGE_PNG)
@@ -58,6 +61,71 @@ public class TileProxyController {
                             schema = @Schema(type = "boolean", defaultValue = "false"))
                     boolean skipCache) {
         return serveTile(validateCoordinates(z, x, y), skipCache);
+    }
+
+    @Get(uri = "/composite", produces = MediaType.IMAGE_PNG)
+    @ExecuteOn(TaskExecutors.VIRTUAL)
+    @Operation(
+            summary = "Fetch a single composited OpenStreetMap image covering a viewport",
+            description = """
+                    Composites the slippy-map tiles covering the requested viewport into one PNG of exactly \
+                    width×height pixels centred on (lat, lon) at zoom z. Component tiles are fetched in \
+                    parallel; failed tile regions are filled with neutral gray and flagged via X-Partial. \
+                    Data © OpenStreetMap contributors, CC-BY-SA. See https://www.openstreetmap.org/copyright. \
+                    Optional query parameter skipCache=true bypasses the composite cache (component tile \
+                    caches are still consulted).""",
+            responses = {
+                @ApiResponse(
+                        responseCode = "200",
+                        description = "Composited image served (freshly built or from the composite cache)",
+                        content =
+                                @Content(
+                                        mediaType = MediaType.IMAGE_PNG,
+                                        schema = @Schema(type = "string", format = "binary"))),
+                @ApiResponse(responseCode = "400", description = "Invalid viewport parameters"),
+                @ApiResponse(responseCode = "502", description = "All component tiles failed to load")
+            })
+    public HttpResponse<byte[]> getComposite(
+            @QueryValue int z,
+            @QueryValue double lat,
+            @QueryValue double lon,
+            @QueryValue int width,
+            @QueryValue int height,
+            @QueryValue(defaultValue = "false")
+                    @Parameter(
+                            description =
+                                    "When true, bypasses the composite cache and rebuilds the image (component tile caches are still consulted). Defaults to false.",
+                            schema = @Schema(type = "boolean", defaultValue = "false"))
+                    boolean skipCache) {
+        validateCompositeParameters(z, lat, lon, width, height);
+        var result = compositeService.compose(z, lat, lon, width, height, skipCache);
+        var remainingSeconds = Math.max(0L, (result.expiresAtEpochMillis() - System.currentTimeMillis()) / 1000);
+        var response = HttpResponse.ok(result.png())
+                .contentType(MediaType.IMAGE_PNG)
+                .header("X-Cache", result.status().name())
+                .header("Cache-Control", "public, max-age=" + remainingSeconds);
+        if (result.partial()) {
+            response.header("X-Partial", "true");
+        }
+        return response;
+    }
+
+    private static void validateCompositeParameters(int z, double lat, double lon, int width, int height) {
+        if (z < 0 || z > MAX_ZOOM_LEVEL) {
+            throw new TileProxyException(HttpStatus.BAD_REQUEST, "zoom level must be between 0 and " + MAX_ZOOM_LEVEL);
+        }
+        if (width < 1 || width > TileCompositeService.MAX_DIMENSION) {
+            throw new TileProxyException(
+                    HttpStatus.BAD_REQUEST, "width must be between 1 and " + TileCompositeService.MAX_DIMENSION);
+        }
+        if (height < 1 || height > TileCompositeService.MAX_DIMENSION) {
+            throw new TileProxyException(
+                    HttpStatus.BAD_REQUEST, "height must be between 1 and " + TileCompositeService.MAX_DIMENSION);
+        }
+        if (Double.isNaN(lat) || Double.isNaN(lon) || lat < -90.0 || lat > 90.0 || lon < -180.0 || lon > 180.0) {
+            throw new TileProxyException(
+                    HttpStatus.BAD_REQUEST, "lat/lon out of range (lat ∈ [-90, 90], lon ∈ [-180, 180])");
+        }
     }
 
     private HttpResponse<byte[]> serveTile(TileCoordinate coordinate, boolean skipCache) {
