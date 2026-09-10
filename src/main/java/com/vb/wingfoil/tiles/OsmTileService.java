@@ -88,7 +88,7 @@ public class OsmTileService {
         var etag = previous == null ? null : previous.etag();
         var request = requestFactory.createRequest(url, etag);
 
-        log.info(
+        log.debug(
                 "Fetching upstream tile {} (user-agent='{}', referer='{}', if-none-match={})",
                 url,
                 config.getUserAgent(),
