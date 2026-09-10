@@ -76,7 +76,7 @@ jobs:
 
       - name: Check application health
         run: |
-          timeout=60
+          timeout=120
           interval=5
           elapsed=0
           while [ $elapsed -lt $timeout ]; do
