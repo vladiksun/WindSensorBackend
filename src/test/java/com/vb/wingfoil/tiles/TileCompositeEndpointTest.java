@@ -115,7 +115,10 @@ class TileCompositeEndpointTest implements TestPropertyProvider {
     void validRequestReturnsCorrectDimensionPng(RequestSpecification spec) throws IOException {
         var response = given(spec).accept("image/png").when().get("/tiles/composite" + VIEWPORT);
 
-        response.then().statusCode(is(200)).contentType("image/png");
+        response.then()
+                .statusCode(is(200))
+                .contentType("image/png")
+                .header("X-Cache", org.hamcrest.Matchers.oneOf("MISS", "REVALIDATED"));
         var img = ImageIO.read(new ByteArrayInputStream(response.getBody().asByteArray()));
         assertNotNull(img);
         assertEquals(454, img.getWidth(), "composite must be exactly the requested width");

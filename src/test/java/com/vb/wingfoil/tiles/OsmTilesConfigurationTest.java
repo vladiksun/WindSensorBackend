@@ -1,6 +1,7 @@
 package com.vb.wingfoil.tiles;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import java.time.Duration;
@@ -25,5 +26,10 @@ class OsmTilesConfigurationTest {
         assertEquals("https://github.com/vladiksun/WindSensor", config.getReferer());
         assertEquals(Duration.ofDays(7), config.getMinTtl());
         assertEquals("/tmp/windsensorbackend/ehcache", config.getEhcacheStoragePath());
+
+        // Optimization defaults: disabled, so existing output is byte-for-byte unchanged.
+        var optimization = config.getOptimization();
+        assertFalse(optimization.isEnabled(), "optimization must be disabled by default");
+        assertEquals(MapTileColorMode.COLORS_32, optimization.getColorsMode(), "default palette is 32");
     }
 }

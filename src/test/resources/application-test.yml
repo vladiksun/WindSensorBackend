@@ -1,6 +1,10 @@
 micronaut:
   server:
-    port: 8082
+    # Ephemeral port: several @MicronautTest classes each start their own embedded server, and a fixed
+    # port collides ("Address already in use") when one class's server has not fully released the port
+    # before the next binds. Port 0 lets the OS pick a free port per server; rest-assured targets the
+    # live server automatically, so no test needs to know the concrete port.
+    port: 0
     ssl:
       enabled: false
 

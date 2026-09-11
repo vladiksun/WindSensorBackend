@@ -10,6 +10,11 @@ archive without sync
 ########################################################################################################################
 
 /opsx:propose
+
+
+########################################################################################################################
+
+/opsx:propose
 Read D:\development\Projects\GIT_MY\WindSensor\openspec\changes\optimize-map-tile-loading\tasks.md
 Here we need to implement Backend functionality
 ## 1. Backend — Composite Tile Service

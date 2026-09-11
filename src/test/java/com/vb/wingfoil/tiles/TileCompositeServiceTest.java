@@ -18,6 +18,7 @@ import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import io.micronaut.test.support.TestPropertyProvider;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
+import java.awt.image.IndexColorModel;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -200,6 +201,31 @@ class TileCompositeServiceTest implements TestPropertyProvider {
         var centre = TileCompositeService.centreTileIndex(15, 60.068347, 30.002349);
         assertEquals(19114, centre[0], "centre tile x must match the watch app's Web-Mercator math");
         assertEquals(9503, centre[1], "centre tile y must match the watch app's Web-Mercator math");
+    }
+
+    @Test
+    void disabledOptimizationKeepsTrueRgbPng() throws IOException {
+        var result = compositeService.compose(ZOOM, LAT, LON, 454, 454, false);
+        assertEquals(OsmTileService.CacheStatus.MISS, result.status());
+        var decoded = decode(result.png());
+        assertFalse(
+                decoded.getColorModel() instanceof IndexColorModel,
+                "with optimization disabled the legacy encoder must emit a true-RGB PNG");
+    }
+
+    @Test
+    void compositeKeyDiffersPerModeSegment() {
+        var off = TileCompositeService.compositeKey(ZOOM, LAT, LON, 454, 454, "off");
+        var original = TileCompositeService.compositeKey(ZOOM, LAT, LON, 454, 454, "original");
+        var c16 = TileCompositeService.compositeKey(ZOOM, LAT, LON, 454, 454, "c16");
+        var c32 = TileCompositeService.compositeKey(ZOOM, LAT, LON, 454, 454, "c32");
+        var c64 = TileCompositeService.compositeKey(ZOOM, LAT, LON, 454, 454, "c64");
+        assertNotEquals(off, original, "different modes must never share a cache key");
+        assertNotEquals(original, c16);
+        assertNotEquals(c16, c32);
+        assertNotEquals(c32, c64);
+        // Same mode segment yields an identical key -> within-mode reuse is possible.
+        assertEquals(off, TileCompositeService.compositeKey(ZOOM, LAT, LON, 454, 454, "off"));
     }
 
     private static int rgb(Color c) {

@@ -75,6 +75,14 @@ osm-tiles:
   # Where the file-system-backed tile cache persists. Deliberately the same value/env var as
   # ehcache.storage-path below so both stay in sync via EHCACHE_STORAGE_PATH.
   ehcache-storage-path: ${EHCACHE_STORAGE_PATH:`/tmp/windsensorbackend/ehcache`}
+  # Post-composition image optimization of composite map images. Server-side only — no client or
+  # request parameter can influence it. When enabled, the final RGB composite is quantized to a
+  # small palette (median cut, dithering off) and emitted as an indexed PNG to shrink the network
+  # payload for the watch. The defaults below preserve today's 24-bit RGB output byte-for-byte.
+  optimization:
+    enabled: true
+    # Palette size for reduced-color modes: original | 16 | 32 | 64 (ignored while enabled=false).
+    colors: 64
 
 # EhCache storage engine backing the osm-tiles cache (heap tier keeps hot tiles fast,
 # disk tier persists under storage-path so tiles survive container restarts).

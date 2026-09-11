@@ -63,9 +63,19 @@ public class TileCompositeService {
 
     private final OsmTileService tileService;
 
-    public TileCompositeService(@Named(CACHE_NAME) SyncCache<Cache> compositeCache, OsmTileService tileService) {
+    private final OsmTilesConfiguration config;
+
+    private final MapImageOptimizer optimizer;
+
+    public TileCompositeService(
+            @Named(CACHE_NAME) SyncCache<Cache> compositeCache,
+            OsmTileService tileService,
+            OsmTilesConfiguration config,
+            MapImageOptimizer optimizer) {
         this.compositeCache = compositeCache;
         this.tileService = tileService;
+        this.config = config;
+        this.optimizer = optimizer;
     }
 
     /**
@@ -76,7 +86,9 @@ public class TileCompositeService {
      * @throws TileProxyException with {@code BAD_GATEWAY} when every component tile fails
      */
     public CompositeResult compose(int z, double lat, double lon, int width, int height, boolean skipCache) {
-        var key = compositeKey(z, lat, lon, width, height);
+        var optimization = config.getOptimization();
+        var key = compositeKey(
+                z, lat, lon, width, height, modeSegment(optimization.isEnabled(), optimization.getColorsMode()));
         var now = System.currentTimeMillis();
 
         if (!skipCache) {
@@ -104,15 +116,39 @@ public class TileCompositeService {
         var minExpiry =
                 present.stream().mapToLong(TileData::expiresAtEpochMillis).min().orElse(now);
 
-        var png = render(viewport, tileRefs, fetched, width, height);
+        var image = render(viewport, tileRefs, fetched, width, height);
+        // Disabled path keeps the legacy encoder (byte-compatible with pre-change output); enabled
+        // routes through the optimizer for the configured color mode.
+        var png = optimization.isEnabled() ? optimizer.optimize(image, optimization.getColorsMode()) : encodePng(image);
         compositeCache.put(key, new CachedComposite(png, now, minExpiry));
         log.debug("Composed {} ({} tiles, {} present, partial={})", key, tileRefs.size(), present.size(), partial);
         return new CompositeResult(png, partial, minExpiry, OsmTileService.CacheStatus.MISS);
     }
 
-    /** Normalized composite cache key: {@code composite/{z}/{lat:.6f}/{lon:.6f}/{width}x{height}}. */
-    public static String compositeKey(int z, double lat, double lon, int width, int height) {
-        return String.format(Locale.ROOT, "composite/%d/%.6f/%.6f/%dx%d", z, lat, lon, width, height);
+    /**
+     * Normalized composite cache key:
+     * {@code composite/{z}/{lat:.6f}/{lon:.6f}/{width}x{height}/{mode}}, where {@code mode} is the
+     * effective optimization-mode segment (see {@link #modeSegment(boolean, MapTileColorMode)}) so
+     * different representations of the same viewport never collide.
+     */
+    public static String compositeKey(int z, double lat, double lon, int width, int height, String mode) {
+        return String.format(Locale.ROOT, "composite/%d/%.6f/%.6f/%dx%d/%s", z, lat, lon, width, height, mode);
+    }
+
+    /**
+     * Effective optimization-mode segment for a composite cache key. Disabled always maps to
+     * {@code off} regardless of the configured color count.
+     */
+    public static String modeSegment(boolean enabled, MapTileColorMode colors) {
+        if (!enabled) {
+            return "off";
+        }
+        return switch (colors) {
+            case ORIGINAL -> "original";
+            case COLORS_16 -> "c16";
+            case COLORS_32 -> "c32";
+            case COLORS_64 -> "c64";
+        };
     }
 
     /** Fractional slippy-map x tile index for a longitude (mirrors the watch app's formula). */
@@ -171,7 +207,8 @@ public class TileCompositeService {
                 .toOption();
     }
 
-    private byte[] render(Viewport vp, List<TileRef> tileRefs, List<Option<TileData>> fetched, int width, int height) {
+    private BufferedImage render(
+            Viewport vp, List<TileRef> tileRefs, List<Option<TileData>> fetched, int width, int height) {
         var canvas = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         var g = canvas.createGraphics();
         try {
@@ -190,7 +227,7 @@ public class TileCompositeService {
         } finally {
             g.dispose();
         }
-        return encodePng(canvas);
+        return canvas;
     }
 
     private static Option<BufferedImage> readImage(byte[] png) {
