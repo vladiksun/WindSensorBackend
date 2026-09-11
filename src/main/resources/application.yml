@@ -82,7 +82,7 @@ osm-tiles:
   optimization:
     enabled: true
     # Palette size for reduced-color modes: original | 16 | 32 | 64 (ignored while enabled=false).
-    colors: 64
+    colors: 32
 
 # EhCache storage engine backing the osm-tiles cache (heap tier keeps hot tiles fast,
 # disk tier persists under storage-path so tiles survive container restarts).
