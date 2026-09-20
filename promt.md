@@ -4,13 +4,66 @@ update memory bank
 ########################################################################################################################
 /opsx:explore ──► /opsx:propose ──► /opsx:apply ──► /opsx:sync ──► /opsx:archive
 ########################################################################################################################
-/opsx:archive add-tile-skip-cache-param
+/opsx:archive fix-onechip-timestamp-derivation
 archive without sync
 
 ########################################################################################################################
 
 /opsx:propose
-
+The call to 
+```
+curl --location 'https://vm67706.vpsone.xyz/sensor-data' \
+--header 'Content-Type: application/json' \
+--data '{
+	"sensor":
+		{
+			"id": "0001",
+			"provider": "onechip"
+		}
+}'
+```
+Gives me
+```
+[
+    {
+        "windMax": 8.4,
+        "windAvg": 6.8,
+        "windMin": 4.9,
+        "windDirection": 17.0,
+        "timestamp": 1790017020
+    },
+    {
+        "windMax": 7.6,
+        "windAvg": 5.7,
+        "windMin": 4.2,
+        "windDirection": 8.0,
+        "timestamp": 1790019660
+    },
+    {
+        "windMax": 7.1,
+        "windAvg": 5.5,
+        "windMin": 3.5,
+        "windDirection": 360.0,
+        "timestamp": 1790022120
+    },
+    {
+        "windMax": 7.1,
+        "windAvg": 5.4,
+        "windMin": 4.2,
+        "windDirection": 11.0,
+        "timestamp": 1789938600
+    },
+    {
+        "windMax": 5.6,
+        "windAvg": 4.6,
+        "windMin": 3.7,
+        "windDirection": 3.0,
+        "timestamp": 1789941240
+    }
+]
+```
+And  "timestamp": 1790022120 is in future that is wrong.
+Fix the logic of com.vb.wingfoil.provider.impl.OneChipDataProvider
 
 ########################################################################################################################
 

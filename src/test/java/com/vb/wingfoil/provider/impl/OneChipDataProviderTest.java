@@ -23,11 +23,15 @@ class OneChipDataProviderTest {
     private static final ZoneId ZONE = ZoneId.of("Africa/Cairo");
 
     private static OneChipDataProvider createProvider() {
+        // The ObjectMapper is unused by this HTML-based provider, so a null instance is safe in this unit test.
+        return new OneChipDataProvider(createConfig(), null);
+    }
+
+    private static WindDataProviderConfig createConfig() {
         var config = new WindDataProviderConfig(OneChipDataProvider.NAME);
         config.setUrl("https://1chip.ru/windt.php?id=%s");
         config.setTimezone(ZONE.getId());
-        // The ObjectMapper is unused by this HTML-based provider, so a null instance is safe in this unit test.
-        return new OneChipDataProvider(config, null);
+        return config;
     }
 
     private static String readFixture() throws IOException {
@@ -38,6 +42,10 @@ class OneChipDataProviderTest {
 
     private static long ts(int hour, int minute) {
         return LocalDateTime.of(2026, 9, 6, hour, minute).atZone(ZONE).toEpochSecond();
+    }
+
+    private static long tsAt(int year, int month, int day, int hour, int minute) {
+        return LocalDateTime.of(year, month, day, hour, minute).atZone(ZONE).toEpochSecond();
     }
 
     private static List<SensorDataDTO> readings(OneChipDataProvider provider, String body, int window, int count) {
@@ -123,5 +131,51 @@ class OneChipDataProviderTest {
         assertEquals(2, result.size());
         assertEquals(ts(21, 6), result.getFirst().timestamp());
         assertEquals(ts(23, 6), result.getLast().timestamp());
+    }
+
+    @Test
+    void rollsBackAcrossMidnightForMultiDayTable() {
+        var html = """
+                <html><body>
+                <div>Arrived: 06/09/2026 00:30:00</div>
+                <div id="data_table"><table>
+                <tr><th>hh:mm</th><th colspan="2">Wind</th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
+                <tr><td>00:30</td><td>a</td><td>5</td><td>8</td><td>12</td><td></td><td>NNW</td><td>340\u00B0</td><td>25</td><td></td></tr>
+                <tr><td>23:30</td><td>a</td><td>4</td><td>7</td><td>10</td><td></td><td>N</td><td>350\u00B0</td><td>25</td><td></td></tr>
+                <tr><td>22:30</td><td>a</td><td>3</td><td>6</td><td>9</td><td></td><td>NNE</td><td>10\u00B0</td><td>24</td><td></td></tr>
+                </table></div>
+                </body></html>
+                """;
+        var result = readings(provider, html, 86400, 5);
+
+        // Oldest is 05/09 22:30, then 05/09 23:30, then 06/09 00:30 (ascending across midnight).
+        assertEquals(3, result.size());
+        assertEquals(tsAt(2026, 9, 5, 22, 30), result.getFirst().timestamp());
+        assertEquals(tsAt(2026, 9, 5, 23, 30), result.get(1).timestamp());
+        assertEquals(tsAt(2026, 9, 6, 0, 30), result.getLast().timestamp());
+        for (int i = 1; i < result.size(); i++) {
+            assertTrue(
+                    result.get(i - 1).timestamp() < result.get(i).timestamp(), "readings must be strictly ascending");
+        }
+    }
+
+    @Test
+    void neverReturnsAFutureReading() throws Exception {
+        long pinnedNow = tsAt(2026, 9, 6, 10, 0);
+        var guarded = new OneChipDataProvider(createConfig(), null) {
+            @Override
+            long currentTimeSeconds() {
+                return pinnedNow;
+            }
+        };
+        var result =
+                guarded.extractTimedReadings("0002", readFixture(), 86400, 5).get();
+
+        assertFalse(result.isEmpty());
+        for (var r : result) {
+            assertTrue(r.timestamp() <= pinnedNow, "no reading may be in the future: " + r.timestamp());
+        }
+        // The fixture's newest reading (06/09 23:06) is shifted back one full day to 05/09 23:06.
+        assertEquals(tsAt(2026, 9, 5, 23, 6), result.getLast().timestamp());
     }
 }
