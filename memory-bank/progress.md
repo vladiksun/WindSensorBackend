@@ -73,7 +73,8 @@ Live-endpoint findings for station 15693 (Dahab – Assalah), re-verified on 202
   answers **200** with a JSON object of five equal-length arrays (24 h window → 358 points each).
 - The same request **without `Referer` answers 401**; `Referer: https://www.windguru.cz/station/15693` is the only
   header that matters — cookies and `X-WG-Token` were not needed, and no User-Agent avoided the 401.
-- Speeds are already knots (no conversion); timestamps are epoch seconds from `unixtime` (`datetime` text and
+- Speeds are published in knots (this provider converts them to metres per second — see the unit-conversion section
+  below); timestamps are epoch seconds from `unixtime` (`datetime` text and
   `tzoffset` are station-local and deliberately ignored — this avoids the DST/timezone reconstruction 1chip needs).
 - Gaps appear as `null` inside the numeric arrays; a valid but empty range answers HTTP 200 with body `[]`.
   Both shapes normalize to a single empty reading rather than zero-speed readings or an error.
@@ -89,3 +90,35 @@ Deferred / open items:
 - Rollout needs the external spots config to point Dahab – Assalah at `"provider": "windguru"`, `"id": "15693"`
   (`wingfoil-spots.json` lives in a separate repo and was intentionally not touched here).
 
+## Recent Progress — Windguru unit conversion (2026-11-04, OpenSpec change `convert-windguru-knots-to-ms`)
+
+What changed:
+- `WindguruDataProvider` now reports **metres per second**. `METRES_PER_SECOND_PER_KNOT = 1_852d / 3_600d`
+  (0.514444… m/s) plus a package-private `knotsToMetresPerSecond(float)` convert min/avg/gust **exactly once**, inside
+  `toMeasurements(...)`, rounding half-up to two decimals; `wind_direction` and `unixtime` pass through untouched, and
+  neither `mapToDTO` nor the shared window reducer converts anything.
+- `WindguruMeasurement` documents min/avg/gust as metres per second (converted from Windguru's knots).
+- **BREAKING for clients**: every windguru number is ~48.6 % smaller than before it (23.1 kn → 11.88 m/s), so any client
+  or spot configuration that assumed knots must be told.
+
+Live re-probe facts for station 15693 (2026-11-04):
+- `station_data` publishes **knots** — the station page renders the same payload as "25 knots — max: 28.3, min: 20.".
+- `unit_speed=mps`, `units=ms` and `speed_unit=ms` each return a byte-identical payload: Windguru cannot be asked for
+  metric speeds, so the conversion has to live in this backend.
+- End-to-end check against a running app: upstream row `min 21.7 / avg 25.8 / max 29.1` kn came back from
+  `POST /sensor-data` (`"provider": "windguru"`, `"id": "15693"`) as `11.16 / 13.27 / 14.97` m/s, with direction and
+  epoch timestamps unchanged.
+
+Verification: `WindguruDataProviderTest` 16 cases (the 12 existing ones plus 4 unit tests for the factor, the rounding,
+zero and speed ordering) and `WindSensorControllerMockServerTest` 16 cases all pass; the MockServer fixture stays in knots
+while its assertions are metres per second (oldest row 10.39 / 11.88 / 13.38, newest row 10.70 / 12.50 / 14.76); spotless
+and both compile gates clean; `openspec validate convert-windguru-knots-to-ms --strict` valid.
+
+Open unit questions (design.md):
+- `SensorDataDTO` is still unit-less, so `/sensor-data` is now provider-dependent: `windguru` reports m/s while `windy`,
+  `neduet` and `onechip` mirror whatever their upstream publishes. Whether the response should declare its unit, or whether
+  the other providers must be audited/normalized too, is out of scope for this change.
+- Resolved at archive time (2026-11-04): `openspec archive` synced this change's two ADDED requirements and created
+  `openspec/specs/windguru-wind-provider/spec.md`, so the capability keeps exactly one normalization requirement — the
+  metres-per-second wording. The older `add-windguru-wind-provider` archive is deliberately left unsynced; syncing it would
+  reintroduce its obsolete "wind speed in knots" wording.

@@ -703,7 +703,7 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
     /** Mirrors the planned "Dahab – Assalah" spots entry: provider windguru, id 15693. */
     private static final String WINDGURU_STATION_ID = "15693";
 
-    /** Trimmed live capture of station 15693; index 3 is published with a null wind_avg (a gap). */
+    /** Trimmed live capture of station 15693 in the knots Windguru publishes; index 3 is a published gap. */
     private static final String WINDGURU_PAYLOAD = """
                     {
                       "unixtime": [1793785260, 1793785500, 1793785980, 1793786220, 1793786700, 1793787000, 1793787180, 1793787360],
@@ -752,10 +752,11 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
                 .then()
                 .statusCode(200)
                 .body("size()", is(7))
-                // Published knots and epoch seconds are carried through unchanged, oldest-first.
-                .body("[0].windMin", is(20.2f))
-                .body("[0].windAvg", is(23.1f))
-                .body("[0].windMax", is(26.0f))
+                // The payload stays in knots; the provider converts each speed to metres per second exactly
+                // once, oldest-first, while timestamps and directions are carried through unchanged.
+                .body("[0].windMin", is(10.39f))
+                .body("[0].windAvg", is(11.88f))
+                .body("[0].windMax", is(13.38f))
                 .body("[0].windDirection", is(10.0f))
                 .body("[0].timestamp", is(1793785260))
                 .body("[1].timestamp", is(1793785500))
@@ -763,7 +764,11 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
                 .body("[3].timestamp", is(1793786700))
                 .body("[4].timestamp", is(1793787000))
                 .body("[5].timestamp", is(1793787180))
-                .body("[6].timestamp", is(1793787360));
+                .body("[6].timestamp", is(1793787360))
+                // The newest published row 20.8 / 24.3 / 28.7 kn arrives as 10.70 / 12.50 / 14.76 m/s.
+                .body("[6].windMin", is(10.70f))
+                .body("[6].windAvg", is(12.50f))
+                .body("[6].windMax", is(14.76f));
 
         verifyMockServerRequest("GET", "/api/windguru/" + WINDGURU_STATION_ID, 1);
     }

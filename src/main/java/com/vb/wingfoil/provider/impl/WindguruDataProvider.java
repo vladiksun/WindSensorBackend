@@ -25,8 +25,12 @@ import org.slf4j.LoggerFactory;
  * <p>
  * The page loads its readings from {@code GET /int/iapi.php?q=station_data}, which answers with a
  * columnar payload: parallel arrays ({@code unixtime}, {@code wind_avg}, {@code wind_max},
- * {@code wind_min}, {@code wind_direction}) of equal length, ascending, speeds already in knots and
- * timestamps already in epoch seconds — so no unit conversion and no time-zone arithmetic is needed.
+ * {@code wind_min}, {@code wind_direction}) of equal length, ascending, speeds published in knots and
+ * timestamps already in epoch seconds — so the only conversion needed is knots to metres per second,
+ * applied exactly once by {@link #knotsToMetresPerSecond(float)} while the columns are unzipped, and no
+ * time-zone arithmetic at all. Windguru cannot be asked for metric speeds instead: {@code unit_speed},
+ * {@code units} and {@code speed_unit} were each verified to leave this payload unchanged, so publishing
+ * metres per second is this provider's own normalization.
  * <p>
  * Two upstream quirks shape this provider:
  * <ul>
@@ -53,6 +57,9 @@ public class WindguruDataProvider extends BaseWindyDataProvider<WindguruMeasurem
 
     /** Windguru station page used as the {@code Referer}; without it the data endpoints answer 401. */
     static final String REFERER_PREFIX = "https://www.windguru.cz/station/";
+
+    /** One knot in metres per second: the exact rational 1852/3600, i.e. 0.514444… m/s. */
+    private static final double METRES_PER_SECOND_PER_KNOT = 1_852d / 3_600d;
 
     protected WindguruDataProvider(
             @Named(NAME) WindDataProviderConfig windDataProviderConfig, ObjectMapper objectMapper) {
@@ -129,9 +136,24 @@ public class WindguruDataProvider extends BaseWindyDataProvider<WindguruMeasurem
     }
 
     /**
+     * Converts one published wind speed from Windguru's knots into the metres per second this backend
+     * reports, using exactly one knot = 1852/3600 m/s and rounding half-up to two decimals — the
+     * resolution the station itself publishes (whole and one-decimal knots), so 24.3 kn is reported as
+     * 12.50 m/s rather than as a float tail that would chase upstream noise.
+     * <p>
+     * Only wind speeds pass through this method: {@code wind_direction} (degrees) and {@code unixtime}
+     * (epoch seconds) are already in the units this backend reports. This is the single conversion site
+     * for Windguru values — neither {@link #mapToDTO(WindguruMeasurement)} nor the shared window reducer
+     * downstream of it may convert again.
+     */
+    static float knotsToMetresPerSecond(float knots) {
+        return (float) (Math.round(knots * METRES_PER_SECOND_PER_KNOT * 100d) / 100d);
+    }
+
+    /**
      * Zips the parallel columns into readings, dropping any index whose timestamp or wind value was
      * published as {@code null} (Windguru's way of marking a gap) or is missing because a column is
-     * shorter than {@code unixtime}.
+     * shorter than {@code unixtime}, and converting the three published speed columns on the way in.
      */
     private static List<WindguruMeasurement> toMeasurements(WindguruStationData stationData) {
         var timestamps = stationData.unixtime();
@@ -151,7 +173,12 @@ public class WindguruDataProvider extends BaseWindyDataProvider<WindguruMeasurem
                 continue;
             }
 
-            measurements.add(new WindguruMeasurement(min, avg, gust, direction, timestamp));
+            measurements.add(new WindguruMeasurement(
+                    knotsToMetresPerSecond(min),
+                    knotsToMetresPerSecond(avg),
+                    knotsToMetresPerSecond(gust),
+                    direction,
+                    timestamp));
         }
         return measurements;
     }

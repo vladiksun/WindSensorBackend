@@ -19,7 +19,8 @@ WindSensorBackend is a REST API service that aggregates wind sensor data from mu
 - Production-ready with SSL, metrics, and health checks
 
 ## Scope
-- Wind data fetching (Burst and Mean wind speeds in knots)
+- Wind data fetching (Burst and Mean wind speeds — knots for most providers, metres per second for the `windguru`
+  provider since the 2026-11-04 unit conversion)
 - Sensor location management (spots data from external config)
 - Multi-provider support (Windy variants, Neduet)
 - Debug mode for development and troubleshooting

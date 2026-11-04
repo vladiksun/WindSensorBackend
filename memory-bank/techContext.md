@@ -82,7 +82,7 @@ Image tagged as `windsensorbackend:latest`
 | `windy` | `windy.url` | `https://api.windyapp.co/apiV9.php?method=getMeteostationDataAndInfo&meteostationID=%s` | JSON object payload, snake_case model via `@Serdeable(naming = SnakeCaseStrategy.class)` |
 | `neduet` | `neduet.url` | `https://neduet.ru/api/full` | Array of stations; sensor id matched inside the payload |
 | `onechip` | `onechip.url`, `onechip.timezone` | `https://1chip.ru/windt.php?id=%s` | HTML-only source parsed with Jsoup; pinned `timezone` keeps timestamps correct |
-| `windguru` | `windguru.url` | `https://www.windguru.cz/int/iapi.php?q=station_data&id_station=%s&avg_minutes=1&graph_info=1` | Columnar history endpoint (`unixtime`, `wind_avg`, `wind_max`, `wind_min`, `wind_direction`); speeds already knots, timestamps already epoch seconds; provider appends a 24 h `&from=&to=` ISO-UTC range and must send `Referer: https://www.windguru.cz/station/<id>` (upstream answers 401 otherwise) |
+| `windguru` | `windguru.url` | `https://www.windguru.cz/int/iapi.php?q=station_data&id_station=%s&avg_minutes=1&graph_info=1` | Columnar history endpoint (`unixtime`, `wind_avg`, `wind_max`, `wind_min`, `wind_direction`); upstream speeds are **knots** and the provider converts them once to **metres per second** (× 1852/3600, half-up to 2 decimals — no upstream unit parameter changes the payload); timestamps already epoch seconds; provider appends a 24 h `&from=&to=` ISO-UTC range and must send `Referer: https://www.windguru.cz/station/<id>` (upstream answers 401 otherwise) |
 
 ### Test Configuration
 `src/test/resources/application-test.yml` - Minimal test config (port 8080, SSL disabled)

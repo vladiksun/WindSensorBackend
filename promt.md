@@ -10,6 +10,13 @@ archive without sync
 ########################################################################################################################
 
 /opsx:propose
+The wind speed data from https://www.windguru.cz/station/15693 is in knots.
+I need [WindguruDataProvider.java](src/main/java/com/vb/wingfoil/provider/impl/WindguruDataProvider.java) to convert
+knots to meter per second
+
+########################################################################################################################
+
+/opsx:propose
 Create implementation of [WindDataProvider.java](src/main/java/com/vb/wingfoil/provider/WindDataProvider.java).
 Call it WindguruDataProvider - code "windguru".
 Analyze network for the station page https://www.windguru.cz/station/15693.

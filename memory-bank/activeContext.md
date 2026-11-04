@@ -1,9 +1,13 @@
 # Active Context
 
 ## Current Work Focus
-- **Windguru wind provider** — OpenSpec change `add-windguru-wind-provider` implemented and verified locally
-  (`WindguruDataProvider`, columnar wire models, shared `requestHeaders` hook, `windguru` entry in `application.yml`).
-  Not yet archived, not yet committed.
+- **Windguru unit conversion** — OpenSpec change `convert-windguru-knots-to-ms` implemented, verified and **archived** to
+  `openspec/changes/archive/2026-11-04-convert-windguru-knots-to-ms/`. Its two ADDED requirements were synced, creating the
+  first main spec of this project, `openspec/specs/windguru-wind-provider/spec.md` (`openspec validate --all --strict`:
+  1 passed, 0 failed). Implementation is still uncommitted.
+- **Windguru wind provider** — archived as `2026-11-04-add-windguru-wind-provider`; its own spec delta was never synced and
+  that is now intentional: the capability spec above restates that requirement with metres-per-second wording and supersedes
+  it, so re-syncing the older archive would only reintroduce the obsolete "wind speed in knots" wording.
 - **Test Infrastructure Preparation** - Finalizing test dependencies for JUnit Platform compatibility
 - **Micronaut 5 Migration** - Completed migration from Micronaut 4.x to Micronaut 5.0.0 (commit `56bba3f`)
   - Updated `io.micronaut.application` plugin to version 5.0.0
@@ -29,7 +33,12 @@
   becomes a `history-hours` config field; whether to drop `graph_info=1`; confirm server-side use of `iapi.php` is
   acceptable at expected request volume; update the external spots config so Dahab – Assalah uses
   `"provider": "windguru"`, `"id": "15693"`; decide later whether `/spots-data` should expose Windguru station metadata
-- [ ] Archive OpenSpec change `add-windguru-wind-provider` once the implementation is reviewed/committed
+- [ ] Commit the windguru conversion: provider + tests + archive move + the new main spec are all staged/unstaged work
+  that is intentionally not committed yet
+- [ ] Unit questions raised by the windguru conversion (design.md – Open Questions): should `/sensor-data` declare its
+  unit explicitly, and must `windy` / `neduet` / `onechip` be audited or normalized so the API is not mixed-unit?
+- [ ] Announce the breaking numeric change (~48.6 % smaller wind values for `windguru` sensors) to clients and to the owner
+  of the external spots configuration before pointing more spots at this provider
 
 ## Active Decisions and Considerations
 - Micronaut 5 chosen for latest framework improvements and long-term support

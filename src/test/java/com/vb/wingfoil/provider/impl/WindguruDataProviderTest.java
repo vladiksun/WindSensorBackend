@@ -15,11 +15,11 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Unit coverage for the Windguru provider: call-URL shape, the mandatory {@code Referer}, unzipping the
- * columnar payload, and Windguru's gap/no-data quirks.
+ * columnar payload into metre-per-second speeds, and Windguru's gap/no-data quirks.
  * <p>
  * The provider and the serde {@code ObjectMapper} come from the application context so the wired bean is
  * exercised against the real {@code application.yml} template. Fixture: a trimmed live capture of station
- * 15693 (Dahab – Assalah) including its extra columns and a published gap.
+ * 15693 (Dahab – Assalah) in the knots Windguru publishes, including its extra columns and a published gap.
  */
 @MicronautTest
 class WindguruDataProviderTest {
@@ -96,14 +96,40 @@ class WindguruDataProviderTest {
     }
 
     @Test
-    void mapsPublishedFieldsWithoutConversion() throws Exception {
+    void convertsPublishedKnotsToMetresPerSecond() throws Exception {
         var oldest = readings(readFixture(), 86400, 100).getFirst();
 
+        // The fixture keeps the published knots (20.2 / 23.1 / 26.0); only the speeds come back converted.
         assertEquals(1793785260L, oldest.timestamp());
-        assertEquals(20.2f, oldest.windMin(), 0.001f);
-        assertEquals(23.1f, oldest.windAvg(), 0.001f);
-        assertEquals(26.0f, oldest.windMax(), 0.001f);
+        assertEquals(10.39f, oldest.windMin(), 0.001f);
+        assertEquals(11.88f, oldest.windAvg(), 0.001f);
+        assertEquals(13.38f, oldest.windMax(), 0.001f);
         assertEquals(10.0f, oldest.windDirection(), 0.001f);
+    }
+
+    @Test
+    void knotsAreConvertedWithTheExactNauticalMileFactor() {
+        assertEquals(0.51f, WindguruDataProvider.knotsToMetresPerSecond(1f), 0.001f);
+        assertEquals(1.85f, WindguruDataProvider.knotsToMetresPerSecond(3.6f), 0.001f);
+    }
+
+    @Test
+    void convertedSpeedsAreRoundedHalfUpToTwoDecimals() {
+        assertEquals(13.38f, WindguruDataProvider.knotsToMetresPerSecond(26f), 0.001f);
+        assertEquals(12.50f, WindguruDataProvider.knotsToMetresPerSecond(24.3f), 0.001f);
+    }
+
+    @Test
+    void zeroSpeedStaysZeroAndConversionKeepsSpeedOrdering() {
+        assertEquals(0f, WindguruDataProvider.knotsToMetresPerSecond(0f), 0.001f);
+
+        var min = WindguruDataProvider.knotsToMetresPerSecond(20.2f);
+        var avg = WindguruDataProvider.knotsToMetresPerSecond(23.1f);
+        var max = WindguruDataProvider.knotsToMetresPerSecond(26f);
+
+        assertTrue(
+                min <= avg && avg <= max,
+                "conversion must not reorder a published min/avg/max: %s/%s/%s".formatted(min, avg, max));
     }
 
     @Test
@@ -124,9 +150,10 @@ class WindguruDataProviderTest {
         assertEquals(1, result.size());
         var latest = result.getFirst();
         assertEquals(1793787360L, latest.timestamp());
-        assertEquals(20.8f, latest.windMin(), 0.001f);
-        assertEquals(24.3f, latest.windAvg(), 0.001f);
-        assertEquals(28.7f, latest.windMax(), 0.001f);
+        // Newest published row 20.8 / 24.3 / 28.7 kn -> 10.70 / 12.50 / 14.76 m/s.
+        assertEquals(10.70f, latest.windMin(), 0.001f);
+        assertEquals(12.50f, latest.windAvg(), 0.001f);
+        assertEquals(14.76f, latest.windMax(), 0.001f);
         assertEquals(37.0f, latest.windDirection(), 0.001f);
     }
 
@@ -142,6 +169,19 @@ class WindguruDataProviderTest {
         for (int i = 1; i < result.size(); i++) {
             assertTrue(result.get(i - 1).timestamp() < result.get(i).timestamp(), "readings must be ascending");
         }
+    }
+
+    @Test
+    void speedsAreConvertedOnceWhateverTheReadingWindowIs() throws Exception {
+        var latestOnly = readings(readFixture(), 0, 0).getFirst();
+        var windowedLatest = readings(readFixture(), 86400, 100).getLast();
+
+        // Same newest row through both paths (getLastReading vs the shared reducer): one conversion each.
+        assertEquals(windowedLatest.timestamp(), latestOnly.timestamp());
+        assertEquals(12.50f, latestOnly.windAvg(), 0.001f);
+        assertEquals(12.50f, windowedLatest.windAvg(), 0.001f);
+        assertNotEquals(6.43f, latestOnly.windAvg(), 0.001f);
+        assertNotEquals(6.43f, windowedLatest.windAvg(), 0.001f);
     }
 
     @Test

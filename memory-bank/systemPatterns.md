@@ -20,7 +20,7 @@ Client --> WindSensorController --> ProxyService --> WindDataProvider (interface
                                         |              |        +--> WindyDataProvider
                                         |              |        +--> NeduetDataProvider
                                         |              |        +--> OneChipDataProvider   (HTML table via Jsoup)
-                                        |              |        +--> WindguruDataProvider  (columnar JSON arrays)
+                                         |              |        +--> WindguruDataProvider  (columnar JSON arrays, knots → m/s)
                                         |              |
                                         |              +--> requestHeaders(sensorId) hook -> provider-specific headers
                                         |
@@ -60,6 +60,16 @@ Client --> WindSensorController --> ProxyService --> WindDataProvider (interface
 - `WindguruDataProvider` overrides it with `Referer: https://www.windguru.cz/station/<id>` because Windguru's
   `iapi.php` data endpoints answer 401 to header-less calls (verified live, every User-Agent tried)
 - Providers that declare nothing are untouched, so an upstream-specific header never changes another provider's call
+
+### Provider-Side Unit Normalization
+- Windguru publishes **knots**; `WindguruDataProvider.knotsToMetresPerSecond(float)` converts each published speed with
+  `METRES_PER_SECOND_PER_KNOT = 1852/3600` (0.514444… m/s), rounded half-up to two decimals, and it is called **exactly
+  once** per value — while the columns are unzipped in `toMeasurements(...)`. Direction (degrees) and `unixtime`
+  (epoch seconds) never pass through it, and nothing downstream (`mapToDTO`, `buildTimedReadings`,
+  `getReadingsByInterval`) converts again.
+- The conversion lives in the provider, not in `BaseWindyDataProvider` or `SensorDataDTO`, so adding it changed no other
+  provider's numbers. Consequence to remember: `SensorDataDTO` is unit-less, so the reported unit is provider-dependent —
+  `windguru` is metres per second, while `windy`, `neduet` and `onechip` still mirror their upstream unit.
 
 ### Configuration Externalization
 - Provider URLs in `application.yml`

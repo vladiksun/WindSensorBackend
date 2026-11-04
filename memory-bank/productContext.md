@@ -13,7 +13,8 @@ Wind data is scattered across multiple providers (Windy, Neduet, etc.), each wit
 ## How It Should Work
 - Client sends a request with sensor ID and/or location parameters
 - Backend routes the request to the appropriate provider(s)
-- Data is normalized into a consistent format (Burst/Mean speed in knots)
+- Data is normalized into a consistent format — Burst/Mean speed, though the **unit is provider-dependent**: `windguru`
+  reports metres per second (since 2026-11-04), while the other providers mirror whatever their upstream publishes
 - Response is returned to the client with unified structure
 - Debug mode available for development and troubleshooting
 
@@ -27,7 +28,8 @@ Wind data is scattered across multiple providers (Windy, Neduet, etc.), each wit
 ## Domain Context
 - **Wind Sports**: Wingfoil, kitesurfing, windsurfing athletes need accurate wind data
 - **Sensor Networks**: Professional wind sensors deployed at popular spots
-- **Key Metrics**: Burst speed (gusts), Mean speed (average), measured in knots
+- **Key Metrics**: Burst speed (gusts), Mean speed (average) — knots for most providers, metres per second for the
+  `windguru` provider
 - **Geography**: Focus on Mediterranean/Egypt locations (Dahab specifically)
 
 ## Value Proposition
