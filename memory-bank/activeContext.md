@@ -1,6 +1,9 @@
 # Active Context
 
 ## Current Work Focus
+- **Windguru wind provider** — OpenSpec change `add-windguru-wind-provider` implemented and verified locally
+  (`WindguruDataProvider`, columnar wire models, shared `requestHeaders` hook, `windguru` entry in `application.yml`).
+  Not yet archived, not yet committed.
 - **Test Infrastructure Preparation** - Finalizing test dependencies for JUnit Platform compatibility
 - **Micronaut 5 Migration** - Completed migration from Micronaut 4.x to Micronaut 5.0.0 (commit `56bba3f`)
   - Updated `io.micronaut.application` plugin to version 5.0.0
@@ -22,6 +25,11 @@
 - [ ] Add rate limiting for external API calls
 - [ ] Create comprehensive error response format
 - [ ] Additional wind data providers as needed
+- [ ] Windguru rollout follow-ups (deferred, see design.md Open Questions): decide whether the fixed 24 h look-back
+  becomes a `history-hours` config field; whether to drop `graph_info=1`; confirm server-side use of `iapi.php` is
+  acceptable at expected request volume; update the external spots config so Dahab – Assalah uses
+  `"provider": "windguru"`, `"id": "15693"`; decide later whether `/spots-data` should expose Windguru station metadata
+- [ ] Archive OpenSpec change `add-windguru-wind-provider` once the implementation is reviewed/committed
 
 ## Active Decisions and Considerations
 - Micronaut 5 chosen for latest framework improvements and long-term support

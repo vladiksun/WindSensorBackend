@@ -5,7 +5,30 @@ update memory bank
 /opsx:explore ──► /opsx:propose ──► /opsx:apply ──► /opsx:sync ──► /opsx:archive
 ########################################################################################################################
 /opsx:archive fix-onechip-timestamp-derivation
-archive without sync
+archive without sync 
+
+########################################################################################################################
+
+/opsx:propose
+Create implementation of [WindDataProvider.java](src/main/java/com/vb/wingfoil/provider/WindDataProvider.java).
+Call it WindguruDataProvider - code "windguru".
+Analyze network for the station page https://www.windguru.cz/station/15693.
+Figure out what calls must be made to gather needed information
+The call to sensor would be like
+```
+{
+        "readingWindow": 3600,
+        "numberOfReadings": 5
+        "sensor": {
+             "label": "Assalah",
+            "provider": "windguru",
+            "id": "15693"
+        }
+}
+```
+
+Write additional tests to [WindSensorControllerMockServerTest.java](src/test/java/com/vb/wingfoil/WindSensorControllerMockServerTest.java).
+You can use chrome-devtools MCP.
 
 ########################################################################################################################
 

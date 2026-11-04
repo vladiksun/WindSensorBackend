@@ -6,7 +6,8 @@
   - `POST /sensor-data` - Fetches wind readings from providers
   - `GET /spots-data` - Fetches available sensor locations (with optional `isDebug` flag)
   - `GET /spots-data-dahab` - Fetches Dahab-specific locations (with optional `isDebug` flag)
-- Provider plugin system with Windy and Neduet implementations
+- Provider plugin system with Windy, Neduet, 1chip (HTML via Jsoup) and Windguru (columnar JSON) implementations
+- Provider-declared upstream headers: `WindDataProvider.requestHeaders(sensorId)` applied by `ProxyService`
 - Multiple Windy provider variants via `BaseWindyDataProvider` abstract base class
 - Configuration binding from `application.yml`
 - External spots configuration loaded from GitHub
@@ -55,3 +56,36 @@
 - Moved exception handling to dedicated `@Controller` bean for cleaner separation
 - MockServer client downgraded from 6.1.0 to 5.15.0 for compatibility
 - JUnit Platform Launcher added as testRuntimeOnly dependency (2026-06-07) for proper test discovery
+
+## Recent Progress — Windguru provider (2026-11-04, OpenSpec change `add-windguru-wind-provider`)
+
+What was built:
+- `com.vb.wingfoil.provider.impl.WindguruDataProvider` (provider name `windguru`, config key
+  `wind-sensor.wind-providers.windguru.url`) extending `BaseWindyDataProvider`, so windowing and the
+  number-of-readings reduction stay shared with every other provider.
+- Wire models `com.vb.wingfoil.response.windguru.WindguruStationData` (boxed column arrays) and
+  `WindguruMeasurement` (normalized reading built by unzipping the columns).
+- Shared plumbing: `WindDataProvider.requestHeaders(String sensorId)` default hook, applied by
+  `ProxyService.requestTimedReadings` on top of the existing `Accept: application/json`.
+
+Live-endpoint findings for station 15693 (Dahab – Assalah), re-verified on 2026-11-04:
+- `GET https://www.windguru.cz/int/iapi.php?q=station_data&id_station=15693&avg_minutes=1&graph_info=1&from=<ISO-UTC>&to=<ISO-UTC>`
+  answers **200** with a JSON object of five equal-length arrays (24 h window → 358 points each).
+- The same request **without `Referer` answers 401**; `Referer: https://www.windguru.cz/station/15693` is the only
+  header that matters — cookies and `X-WG-Token` were not needed, and no User-Agent avoided the 401.
+- Speeds are already knots (no conversion); timestamps are epoch seconds from `unixtime` (`datetime` text and
+  `tzoffset` are station-local and deliberately ignored — this avoids the DST/timezone reconstruction 1chip needs).
+- Gaps appear as `null` inside the numeric arrays; a valid but empty range answers HTTP 200 with body `[]`.
+  Both shapes normalize to a single empty reading rather than zero-speed readings or an error.
+
+Verification: `WindguruDataProviderTest` (12 cases) and `WindSensorControllerMockServerTest` (16 cases, 6 of them new:
+header plumbing both directions, windguru normalization, Referer arrival at upstream, gap/`[]` handling, upstream 401
+failure) all pass; spotless and both compile gates clean. The older "no test classes exist" notes above are outdated.
+
+Deferred / open items:
+- Whether the fixed 24 h look-back (`LOOK_BACK_SECONDS`) should become a `history-hours` config field for longer windows.
+- Whether to drop `graph_info=1` from the configured URL (payload noise only).
+- Confirming server-side use of `iapi.php` is acceptable at production request volume (no published rate limit).
+- Rollout needs the external spots config to point Dahab – Assalah at `"provider": "windguru"`, `"id": "15693"`
+  (`wingfoil-spots.json` lives in a separate repo and was intentionally not touched here).
+

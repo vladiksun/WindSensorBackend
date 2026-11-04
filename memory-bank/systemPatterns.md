@@ -14,14 +14,17 @@ Stateless REST API built on Micronaut 5 with a plugin-based provider architectur
 
 ## Component Relationships
 ```
-HttpClient --> WindSensorController --> WindDataProvider (interface)
-                                      |
-                                      +--> BaseWindyDataProvider (abstract)
-                                      |         +--> WindyDataProvider
-                                      |         +--> WindyDataProviderV2
-                                      |         +--> WindyDataProviderV3
-                                      |
-                                      +--> NeduetDataProvider
+Client --> WindSensorController --> ProxyService --> WindDataProvider (interface)
+                                        |              |
+                                        |              +--> BaseWindyDataProvider (abstract: windowing, reduction)
+                                        |              |        +--> WindyDataProvider
+                                        |              |        +--> NeduetDataProvider
+                                        |              |        +--> OneChipDataProvider   (HTML table via Jsoup)
+                                        |              |        +--> WindguruDataProvider  (columnar JSON arrays)
+                                        |              |
+                                        |              +--> requestHeaders(sensorId) hook -> provider-specific headers
+                                        |
+                                        +--> OsmTileService / TileCompositeService (OSM tile proxy + composites)
 ```
 
 ## Data Flow
@@ -50,6 +53,13 @@ HttpClient --> WindSensorController --> WindDataProvider (interface)
 - Vavr `Option` for nullable values
 - Eliminates null pointer exceptions
 - Composable error handling chains
+
+### Provider-Declared Upstream Headers
+- `WindDataProvider.requestHeaders(sensorId)` is a default method returning `Map.of()`; `ProxyService` layers whatever
+  a provider declares on top of the shared `Accept: application/json` header
+- `WindguruDataProvider` overrides it with `Referer: https://www.windguru.cz/station/<id>` because Windguru's
+  `iapi.php` data endpoints answer 401 to header-less calls (verified live, every User-Agent tried)
+- Providers that declare nothing are untouched, so an upstream-specific header never changes another provider's call
 
 ### Configuration Externalization
 - Provider URLs in `application.yml`

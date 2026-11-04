@@ -83,6 +83,17 @@ public class ProxyService {
         var request = new HttpGet(url);
         request.addHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON);
 
+        // Providers may require upstream-specific headers (Windguru answers 401 without a Referer);
+        // providers that declare none are unaffected because the default map is empty.
+        var providerHeaders = provider.requestHeaders(sensorId);
+        if (providerHeaders != null) {
+            providerHeaders.forEach((headerName, headerValue) -> {
+                if (headerName != null && !headerName.isBlank() && headerValue != null) {
+                    request.addHeader(headerName, headerValue);
+                }
+            });
+        }
+
         var context = new ResponseHandlerContext(
                 mayBeAreaReadingWindow, maybeAreaNumberOfReadings, sensor, url, provider, sensorId);
 

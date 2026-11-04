@@ -55,6 +55,11 @@ wind-sensor:
       # 1chip.ru prints sensor-local wall-clock time; pin the sensor's zone so absolute timestamps
       # stay correct regardless of the host/container timezone (e.g. UTC in Docker).
       timezone: Africa/Cairo
+    # Windguru station history endpoint (q=station_data returns parallel arrays of readings).
+    # Static query parameters live here so they can be tuned per environment without a code change;
+    # the provider only appends the &from=&to= UTC range. Keep exactly one %s — the station id.
+    windguru:
+      url: https://www.windguru.cz/int/iapi.php?q=station_data&id_station=%s&avg_minutes=1&graph_info=1
 
   spots-data-url: ${SPOTS_DATA_URL:`https://raw.githubusercontent.com/vladiksun/WindSensorConfig/refs/heads/main/spots.json`}
   spots-test-data-url: ${SPOTS_TEST_DATA_URL:`https://raw.githubusercontent.com/vladiksun/WindSensorConfig/refs/heads/main/spots_test.json`}
