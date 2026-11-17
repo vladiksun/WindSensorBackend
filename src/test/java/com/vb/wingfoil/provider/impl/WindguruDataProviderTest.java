@@ -76,10 +76,10 @@ class WindguruDataProviderTest {
     @Test
     void providersWithoutDeclaredHeadersStayOnTheDefault() {
         // The hook is a default method: a provider that does not override it declares nothing, so the
-        // shared request builder adds no headers for it.
-        var oneChip = new OneChipDataProvider(new WindDataProviderConfig(OneChipDataProvider.NAME), null);
+        // shared request builder adds no headers for it. (1chip overrides it; windy does not.)
+        var windy = new WindyDataProvider(new WindDataProviderConfig(WindyDataProvider.NAME), null);
 
-        assertTrue(oneChip.requestHeaders("0002").isEmpty());
+        assertTrue(windy.requestHeaders("12345").isEmpty());
     }
 
     @Test

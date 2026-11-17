@@ -66,6 +66,13 @@ wind-sensor:
   spots-dahab-url: ${SPOTS_DAHAB_URL:`https://raw.githubusercontent.com/vladiksun/WindSensorConfig/refs/heads/main/spots_dahab.json`}
   spots-data-media-type: ${SPOTS_DATA_MEDIA_TYPE:`text/plain`}
 
+  # Bounds (seconds) on each outbound provider call made through the shared upstream HttpClient. A provider
+  # endpoint that accepts the connection and then stalls must fail as an upstream error, not hold a request
+  # open forever; the values below are also what ProxyService falls back to if these keys are absent.
+  upstream-connect-timeout-seconds: ${UPSTREAM_CONNECT_TIMEOUT_SECONDS:`10`}
+  upstream-response-timeout-seconds: ${UPSTREAM_RESPONSE_TIMEOUT_SECONDS:`30`}
+  upstream-connection-request-timeout-seconds: ${UPSTREAM_CONNECTION_REQUEST_TIMEOUT_SECONDS:`10`}
+
 ########################################################################################################################
 
 # Caching proxy for OpenStreetMap slippy-map tiles (OSM tile usage policy compliance).

@@ -10,6 +10,15 @@ archive without sync
 
 ########################################################################################################################
 
+/opsx:propose
+The [OneChipDataProvider.java](src/main/java/com/vb/wingfoil/provider/impl/OneChipDataProvider.java) does not work properly.
+For example https://1chip.ru/windt.php?id=0264 contains data but when I use configuration with this sensor client watch part does
+not show any data ( D:\development\Projects\GIT_MY\WindSensor )
+Configuration is here https://github.com/vladiksun/WindSensorConfig/blob/e91c61f1d5a9eaaff775ec1066a3d44c93b28c8f/spots.json
+Same issue is for https://1chip.ru/windt.php?id=0001
+
+########################################################################################################################
+
 Investigate the page https://1chip.ru/wind.html
 I need to scan the drop down list 
 ```adlanguage

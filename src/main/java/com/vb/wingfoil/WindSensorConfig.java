@@ -16,6 +16,16 @@ public class WindSensorConfig {
 
     private String spotsDataMediaType;
 
+    /**
+     * Outbound call bounds (seconds) for the shared upstream HttpClient. A provider whose endpoint accepts
+     * the connection and then stalls must fail rather than pin a request thread, so all three are explicit.
+     */
+    private int upstreamConnectTimeoutSeconds = 10;
+
+    private int upstreamResponseTimeoutSeconds = 30;
+
+    private int upstreamConnectionRequestTimeoutSeconds = 10;
+
     public String getSpotsDataUrl() {
         return spotsDataUrl;
     }
@@ -46,6 +56,30 @@ public class WindSensorConfig {
 
     public void setSpotsDataMediaType(String spotsDataMediaType) {
         this.spotsDataMediaType = spotsDataMediaType;
+    }
+
+    public int getUpstreamConnectTimeoutSeconds() {
+        return upstreamConnectTimeoutSeconds;
+    }
+
+    public void setUpstreamConnectTimeoutSeconds(int upstreamConnectTimeoutSeconds) {
+        this.upstreamConnectTimeoutSeconds = upstreamConnectTimeoutSeconds;
+    }
+
+    public int getUpstreamResponseTimeoutSeconds() {
+        return upstreamResponseTimeoutSeconds;
+    }
+
+    public void setUpstreamResponseTimeoutSeconds(int upstreamResponseTimeoutSeconds) {
+        this.upstreamResponseTimeoutSeconds = upstreamResponseTimeoutSeconds;
+    }
+
+    public int getUpstreamConnectionRequestTimeoutSeconds() {
+        return upstreamConnectionRequestTimeoutSeconds;
+    }
+
+    public void setUpstreamConnectionRequestTimeoutSeconds(int upstreamConnectionRequestTimeoutSeconds) {
+        this.upstreamConnectionRequestTimeoutSeconds = upstreamConnectionRequestTimeoutSeconds;
     }
 
     @Serdeable

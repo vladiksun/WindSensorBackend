@@ -10,6 +10,7 @@ import static org.mockserver.model.JsonBody.json;
 
 import com.vb.wingfoil.WindSensorConfig.WindDataProviderConfig;
 import com.vb.wingfoil.provider.impl.BaseWindyDataProvider;
+import com.vb.wingfoil.provider.impl.OneChipDataProvider;
 import com.vb.wingfoil.response.windy.WindyMeasurement;
 import io.micronaut.context.annotation.Requires;
 import io.micronaut.core.annotation.NonNull;
@@ -69,6 +70,8 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
                 mockServerContainer.getEndpoint() + "/api/windguru/%s?q=station_data",
                 "wind-sensor.wind-providers.probe.url",
                 mockServerContainer.getEndpoint() + "/api/probe/%s",
+                "wind-sensor.wind-providers.onechip.url",
+                mockServerContainer.getEndpoint() + "/api/onechip/%s",
                 "spec.name",
                 "WindSensorControllerMockServerTest");
     }
@@ -694,6 +697,122 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
         mockServerClient.verify(
                 request().withMethod("GET").withPath("/api/windy/" + sensorId).withHeader("X-Test-Header", "sent"),
                 VerificationTimes.exactly(0));
+
+        // ...and the 1chip provider's HTML Accept must not leak into a provider that declares nothing.
+        mockServerClient.verify(
+                request()
+                        .withMethod("GET")
+                        .withPath("/api/windy/" + sensorId)
+                        .withHeader("Accept", OneChipDataProvider.ACCEPT_HTML),
+                VerificationTimes.exactly(0));
+    }
+
+    // ========================================================================
+    // 1chip provider (server-rendered HTML upstream, no API behind it)
+    // ========================================================================
+
+    private static final String ONECHIP_SENSOR_ID = "0264";
+
+    /** A page shaped like the live one: seven header cells, two of them spanning two columns each. */
+    private static final String ONECHIP_PAGE = """
+            <html><body>
+            <table><tr><td>Arrived: 17/11/2026 19:36:21</td></tr></table>
+            <div id="data_table"><table border="1">
+            <tr><td>hh:mm</td><td>Dir</td><td><small>min </small></td><td>Avg, m/s</td><td colspan="2">Gust, m/s</td><td colspan="2">Dir, &deg</td><td>Te,&deg;C</td></tr>
+            <tr><td>19:36</td><td>&#8595;</td><td><small>7.5</small></td><td>9.4</td><td>10.9</td><td>36</td><td>N</td><td>9&deg;</td><td>24.9</td><td></td></tr>
+            </table></div>
+            </body></html>
+            """;
+
+    @Test
+    void onechipCallCarriesHtmlAcceptAndBrowserUserAgent(RequestSpecification spec) {
+        mockServerClient
+                .when(request().withMethod("GET").withPath("/api/onechip/" + ONECHIP_SENSOR_ID))
+                .respond(response()
+                        .withStatusCode(200)
+                        .withHeaders(new Header("Content-Type", "text/html; charset=UTF-8"))
+                        .withBody(ONECHIP_PAGE));
+
+        postOnechipRequest(spec, 3600, 5)
+                .then()
+                .statusCode(200)
+                .body("size()", is(1))
+                .body("[0].windMax", is(10.9f))
+                .body("[0].windAvg", is(9.4f))
+                .body("[0].windMin", is(7.5f))
+                // Read from the "Dir, °" column, not from the cell next to it.
+                .body("[0].windDirection", is(9.0f));
+
+        mockServerClient.verify(
+                request()
+                        .withMethod("GET")
+                        .withPath("/api/onechip/" + ONECHIP_SENSOR_ID)
+                        .withHeader("Accept", OneChipDataProvider.ACCEPT_HTML)
+                        .withHeader("User-Agent", OneChipDataProvider.USER_AGENT)
+                        .withHeader("Accept-Language", OneChipDataProvider.ACCEPT_LANGUAGE),
+                VerificationTimes.exactly(1));
+
+        // The provider's Accept replaced the proxy default rather than being appended to it: an HTML-only
+        // upstream must not be told the client wants JSON as well.
+        mockServerClient.verify(
+                request()
+                        .withMethod("GET")
+                        .withPath("/api/onechip/" + ONECHIP_SENSOR_ID)
+                        .withHeader("Accept", "application/json"),
+                VerificationTimes.exactly(0));
+    }
+
+    @Test
+    void onechipEmptyShellUpstreamKeepsTheCompatibleZeroReading(RequestSpecification spec) {
+        // Exactly what 1chip.ru answers when it has nothing to render: HTTP 200 and a twelve-byte shell.
+        mockServerClient
+                .when(request().withMethod("GET").withPath("/api/onechip/" + ONECHIP_SENSOR_ID))
+                .respond(response()
+                        .withStatusCode(200)
+                        .withHeaders(new Header("Content-Type", "text/html; charset=UTF-8"))
+                        .withBody("</div></div>"));
+
+        postOnechipRequest(spec, 3600, 5)
+                .then()
+                .statusCode(200)
+                .body("size()", is(1))
+                .body("[0].windMax", is(0.0f))
+                .body("[0].windAvg", is(0.0f))
+                .body("[0].windMin", is(0.0f))
+                .body("[0].windDirection", is(0.0f))
+                .body("[0].timestamp", is(0));
+
+        verifyMockServerRequest("GET", "/api/onechip/" + ONECHIP_SENSOR_ID, 1);
+    }
+
+    @Test
+    void onechipUpstreamFailureStaysAnUpstreamError(RequestSpecification spec) {
+        mockServerClient
+                .when(request().withMethod("GET").withPath("/api/onechip/" + ONECHIP_SENSOR_ID))
+                .respond(response().withStatusCode(503));
+
+        // "No data to render" is a 200 with the zero reading; a refusal keeps failing as an upstream error.
+        postOnechipRequest(spec, 3600, 5)
+                .then()
+                .statusCode(500)
+                .body("message", containsString("Upstream call failed with status 503"));
+
+        verifyMockServerRequest("GET", "/api/onechip/" + ONECHIP_SENSOR_ID, 1);
+    }
+
+    private Response postOnechipRequest(RequestSpecification spec, int window, int count) {
+        String body = """
+                {
+                  "readingWindow": %d,
+                  "numberOfReadings": %d,
+                  "sensor": {
+                    "id": "%s",
+                    "provider": "onechip"
+                  }
+                }
+                """.formatted(window, count, ONECHIP_SENSOR_ID);
+
+        return spec.contentType(ContentType.JSON).body(body).when().post("/sensor-data");
     }
 
     // ========================================================================
