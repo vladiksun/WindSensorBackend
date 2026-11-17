@@ -7,6 +7,46 @@ update memory bank
 /opsx:archive fix-onechip-timestamp-derivation
 archive without sync 
 
+
+########################################################################################################################
+
+Investigate the page https://1chip.ru/wind.html
+I need to scan the drop down list 
+```adlanguage
+<select name="Spot" id="produce"
+```
+and get all spots that contain "Dahab"
+For each "Dahab" spot i need to constuct the link like
+```adlanguage
+https://1chip.ru/windt.php?id=0000
+```
+Where 0000 part is taken from
+```adlanguage
+<option value="0000,00.000000,00.000000,1794750431,wb00d00000,Dahab Lighthouse?RUSSIA">Dahab Lighthouse</option>
+```
+value="0000
+
+
+
+########################################################################################################################
+
+/opsx:propose
+Check the docker container logs - there are errors.
+Connect via ssh.
+IP: 89.46.42.210
+Port: 3084
+Login: root
+Password: D8yhhG6!Ddk
+
+Container logs:
+```adlanguage
+docker logs --tail 100 -f windsensorbackend
+```
+
+Probably the windguru applies rate limit because the error does not happen right away - only after certain quantity of requests.
+The error does not happen right away - only after certain quantity of requests.
+Propose the fix.
+
 ########################################################################################################################
 
 /opsx:propose
