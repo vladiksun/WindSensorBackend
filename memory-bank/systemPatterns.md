@@ -1,7 +1,7 @@
 # System Patterns
 
 ## Architecture Overview
-Stateless REST API built on Micronaut 5 with a plugin-based provider architecture. No internal state or database - all data flows through from external APIs.
+Stateless REST API built on Micronaut 5 with a plugin-based provider architecture. No database and no persisted application state - all data flows through from external APIs. The only in-process state is short-lived, bounded and restart-free: the Ehcache-backed caches behind the tile proxy and (since `add-sensor-data-floating-ttl-cache`) behind `POST /sensor-data`.
 
 ## Key Technical Decisions
 - **Micronaut 5** for compile-time DI, AOT optimization, fast startup
@@ -24,16 +24,20 @@ Client --> WindSensorController --> ProxyService --> WindDataProvider (interface
                                         |              |
                                         |              +--> requestHeaders(sensorId) hook -> provider-specific headers
                                         |
-                                        +--> OsmTileService / TileCompositeService (OSM tile proxy + composites)
+                                        +--> SensorDataResponseCache (Ehcache "sensor-data-cache", per-entry floating TTL)
+                                         |        +--> FloatingTtlCalculator (ttl ± floating-window, floored at 1 s)
+                                         +--> SensorDataSingleFlight  (per-key fetch coalescing)
+                                         |
+                                         +--> OsmTileService / TileCompositeService (OSM tile proxy + composites)
 ```
 
 ## Data Flow
 1. HTTP request arrives at `WindSensorController`
-2. Controller injects appropriate `WindDataProvider` implementation
-3. Provider fetches data from external API via Apache HttpClient5
-4. Response parsed and normalized into `WindReading` model
+2. `ProxyService.requestTimedReadings` resolves the provider by name **and** the effective `readingWindow` / `numberOfReadings` before any call, then asks `SensorDataResponseCache` for that key; a still-valid entry answers immediately and the response carries `X-Cache: HIT`
+3. On a miss `SensorDataSingleFlight` runs the fetch once per key: one bounded Apache HttpClient5 call (provider-declared `requestHeaders` layered over `Accept: application/json`, automatic retries disabled)
+4. The provider parses and normalizes the body (`WindReading` / `SensorDataDTO`); the parsed list is stored with a freshly drawn expiry and the response carries `X-Cache: MISS`
 5. Data returned to client as JSON
-6. Exceptions caught by `GlobalExceptionHandler`
+6. Exceptions caught by `GlobalExceptionHandler`; a call that failed caches nothing and its throwable reaches the handler unchanged
 
 ## Key Patterns
 
@@ -70,6 +74,18 @@ Client --> WindSensorController --> ProxyService --> WindDataProvider (interface
 - The conversion lives in the provider, not in `BaseWindyDataProvider` or `SensorDataDTO`, so adding it changed no other
   provider's numbers. Consequence to remember: `SensorDataDTO` is unit-less, so the reported unit is provider-dependent —
   `windguru` is metres per second, while `windy`, `neduet` and `onechip` still mirror their upstream unit.
+
+### Response Cache With A Floating TTL (`POST /sensor-data`, OpenSpec change `add-sensor-data-floating-ttl-cache`)
+- Caching happens in exactly one place — `ProxyService.requestTimedReadings` — so no `WindDataProvider` knows a cache exists and any provider added later is cached by the same code. Order: resolve provider → resolve effective window/count → build key → valid entry answers as `HIT`, otherwise coalesced fetch, parse, store, answer as `MISS`.
+- Cache key is the readable string `<provider>/<sensorId>/<readingWindowSeconds>/<numberOfReadings>` (`SensorDataResponseCache.cacheKey`), because window and count change the response body.
+- Expiry travels inside the value: `CachedSensorReadings(readings, storedAtEpochMillis, expiresAtEpochMillis)`. Ehcache 3 TTL is a cache-level setting and micronaut-cache exposes only tiers (`heap.max-entries`, `disk.max-size`), so a per-entry random TTL cannot be expressed in configuration. Same pattern as `CachedTile` / `CachedComposite`.
+- Time-to-live, never time-to-idle: a lookup compares the stored expiry against now, treats an expired entry as absent and removes it, and never extends an entry — a hot poll cannot pin one forever.
+- `FloatingTtlCalculator` draws one jitter per write: uniform over `[0, floating-window]` inclusive with a random sign, added to `ttl`, floored at 1 000 ms. Purpose: refetch instants stop being the fixed interval a periodic poller is fingerprinted by.
+- What is and is not cached: every failure (`HttpClientError`, `ParseResponseException`, "provider not found", a stalled connection) stores nothing and propagates unchanged; a successful parse is stored **even when it produced no usable readings** — that is the abuse protection for an offline sensor, whose single zero-valued reading then answers repeat polls.
+- `SensorDataSingleFlight` coalesces per key: `putIfAbsent` elects one leader, only the leader runs the fetch, it removes its own future in a `finally`, waiters bound their own wait over the configured upstream timeouts plus a margin, and the leader's throwable reaches every waiter as the identical instance. Keys never wait on each other.
+- Values must implement `Serializable`: Micronaut's Ehcache integration validates every value against `Serializable` when writing it, so a heap-only cache is not exempt (`CachedSensorReadings` and its payload record `SensorDataDTO` do).
+- Configuration: `wind-sensor.sensor-data-cache.enabled|ttl|floating-window` (`SENSOR_DATA_CACHE_ENABLED`, `CACHE_TTL`, `CACHE_TTL_FLOATING_WINDOW`; defaults `true`, `5m`, `1m`) plus `ehcache.caches.sensor-data-cache.heap.max-entries: 200` with **no** disk tier, so nothing new is written under `ehcache.storage-path`.
+- Observability and rollback: the client sees the outcome as `X-Cache: HIT|MISS`; `enabled: false` (which `application-test.yml` sets) restores exactly one upstream call per request without a rebuild.
 
 ### Configuration Externalization
 - Provider URLs in `application.yml`

@@ -11,3 +11,10 @@ micronaut:
 # Keep EhCache disk writes out of /var/lib during tests (not writable without root).
 ehcache:
   storage-path: ${java.io.tmpdir}/windsensorbackend-test-ehcache
+
+# Response caching is off by default in the test profile: every existing /sensor-data scenario asserts exactly
+# one upstream call per request, and the cache must not quietly change that. The caching suite re-enables it
+# with its own short TTL and a zero floating window for determinism.
+wind-sensor:
+  sensor-data-cache:
+    enabled: false

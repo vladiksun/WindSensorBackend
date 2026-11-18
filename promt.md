@@ -9,6 +9,37 @@ archive without sync
 
 
 ########################################################################################################################
+/opsx:propose
+For REST call  @Post("/sensor-data") I need to apply a cache with configurable TTL - default every 5 minutes.
+TTL must be floating (dynamic) +- CACHE_TTL_FLOATING_WINDOW.
+Default value for CACHE_TTL_FLOATING_WINDOW = 1 minute window - random value between 0 and 1 minute.
+We need the CACHE_TTL_FLOATING_WINDOW to bypass sraping detection.
+Use separate ehcache cache.
+We must use cache transparently for each WindDataProvider.
+
+
+########################################################################################################################
+
+Investigate the docker container logs.
+```adlanguage
+docker logs -f windsensorbackend
+```
+
+
+Figure out how many requests before onechip applies rate limit and returns empty body.
+Also tell me for how lonf the IP is banned.
+
+
+########################################################################################################################
+
+According to [windguru_api_rate_limit.md](docs/windguru_api_rate_limit.md) Windguru applies rate limit.
+I need to answer the question - if I use the cache for @Post("/sensor-data") what min TTL I can use ?
+According to https://www.windguru.cz/help.php?sec=api the developer free plan is 30 Requests per minute.
+What if I use 5 minutes TTL for cache and update the cache every 5 minutes ?
+
+
+
+########################################################################################################################
 
 /opsx:propose
 The [OneChipDataProvider.java](src/main/java/com/vb/wingfoil/provider/impl/OneChipDataProvider.java) does not work properly.
@@ -42,10 +73,7 @@ value="0000
 /opsx:propose
 Check the docker container logs - there are errors.
 Connect via ssh.
-IP: 89.46.42.210
-Port: 3084
-Login: root
-Password: D8yhhG6!Ddk
+
 
 Container logs:
 ```adlanguage

@@ -1,5 +1,10 @@
 package com.vb.wingfoil;
 
+import com.vb.wingfoil.cache.CacheStatus;
+import com.vb.wingfoil.cache.SensorDataCacheProperties;
+import com.vb.wingfoil.cache.SensorDataOutcome;
+import com.vb.wingfoil.cache.SensorDataResponseCache;
+import com.vb.wingfoil.cache.SensorDataSingleFlight;
 import com.vb.wingfoil.provider.WindDataProvider;
 import io.micronaut.core.type.Argument;
 import io.micronaut.http.HttpHeaders;
@@ -10,6 +15,7 @@ import io.vavr.control.Try;
 import jakarta.inject.Singleton;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +45,12 @@ public class ProxyService {
 
     public static final int NUMBER_OF_READINGS_DEFAULT = 5;
 
+    /**
+     * Extra time a request that joined another request's upstream call allows itself on top of every bound that call
+     * is already confined by, so a wedged leader cannot pin the waiting virtual thread indefinitely.
+     */
+    private static final int UPSTREAM_WAIT_MARGIN_SECONDS = 5;
+
     private final Argument<List<SpotDataDTO>> argument = Argument.listOf(SpotDataDTO.class);
 
     private final Map<String, WindDataProvider<?>> windDataProvidersByName;
@@ -49,8 +61,19 @@ public class ProxyService {
 
     private final ObjectMapper objectMapper;
 
+    private final SensorDataCacheProperties sensorDataCacheProperties;
+
+    private final SensorDataResponseCache sensorDataCache;
+
+    private final SensorDataSingleFlight singleFlight;
+
     public ProxyService(
-            List<WindDataProvider<?>> windDataProviders, WindSensorConfig windSensorConfig, ObjectMapper objectMapper) {
+            List<WindDataProvider<?>> windDataProviders,
+            WindSensorConfig windSensorConfig,
+            ObjectMapper objectMapper,
+            SensorDataCacheProperties sensorDataCacheProperties,
+            SensorDataResponseCache sensorDataCache,
+            SensorDataSingleFlight singleFlight) {
         windDataProvidersByName = windDataProviders.stream()
                 .filter(Objects::nonNull)
                 .filter(p -> p.getName() != null && !p.getName().isBlank())
@@ -63,6 +86,9 @@ public class ProxyService {
 
         this.windSensorConfig = windSensorConfig;
         this.objectMapper = objectMapper;
+        this.sensorDataCacheProperties = sensorDataCacheProperties;
+        this.sensorDataCache = sensorDataCache;
+        this.singleFlight = singleFlight;
 
         httpClient = buildHttpClient(windSensorConfig);
     }
@@ -103,7 +129,13 @@ public class ProxyService {
                 .build();
     }
 
-    Try<List<SensorDataDTO>> requestTimedReadings(
+    /**
+     * Cache-first {@code POST /sensor-data}: a valid entry answers the request with no upstream call at all, and a
+     * missing or expired entry fetches from the provider, parses it, stores what was parsed, and returns it. Providers
+     * are untouched by this — the cache sits in the shared request path, so every registered provider is covered by
+     * the same code, including one added later. Failures store nothing and propagate unchanged.
+     */
+    Try<SensorDataOutcome> requestTimedReadings(
             Option<Integer> mayBeAreaReadingWindow, Option<Integer> maybeAreaNumberOfReadings, SensorDTO sensor) {
         var providerCode = sensor.provider();
         var sensorId = sensor.id();
@@ -118,6 +150,40 @@ public class ProxyService {
         var provider = Option.of(windDataProvidersByName.get(providerCode))
                 .getOrElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerCode));
 
+        // Resolved before the call rather than while handling the response: these values decide which cache entry a
+        // request belongs to as well as how the provider reduces its payload, and none of the three inputs — the
+        // request value, the default, the sensor's own configuration — depends on what the upstream answers.
+        var readingWindow = resolveReadingWindow(mayBeAreaReadingWindow, sensor);
+        var numberOfReadings = resolveNumberOfReadings(maybeAreaNumberOfReadings, sensor);
+
+        if (!sensorDataCacheProperties.isEnabled()) {
+            return fetchReadings(provider, sensorId, readingWindow, numberOfReadings)
+                    .map(readings -> new SensorDataOutcome(readings, CacheStatus.MISS))
+                    .onFailure(e -> logger.error("Failed to get sensor data", e));
+        }
+
+        var key = SensorDataResponseCache.cacheKey(providerCode, sensorId, readingWindow, numberOfReadings);
+        var hit = sensorDataCache.lookup(key).map(entry -> new SensorDataOutcome(entry.readings(), CacheStatus.HIT));
+        if (hit.isDefined()) {
+            return Try.success(hit.get());
+        }
+
+        return fetchAndStore(provider, sensorId, readingWindow, numberOfReadings, key);
+    }
+
+    /** Effective window: the request value or the default, overridden by the sensor's own configuration. */
+    private static int resolveReadingWindow(Option<Integer> requestValue, SensorDTO sensor) {
+        return Option.of(sensor.readingWindow()).getOrElse(requestValue.getOrElse(READING_WINDOW_SECONDS_DEFAULT));
+    }
+
+    /** Effective number of readings: the request value or the default, overridden by the sensor's own configuration. */
+    private static int resolveNumberOfReadings(Option<Integer> requestValue, SensorDTO sensor) {
+        return Option.of(sensor.numberOfReadings()).getOrElse(requestValue.getOrElse(NUMBER_OF_READINGS_DEFAULT));
+    }
+
+    /** The one bounded upstream call, unchanged from before caching: same URL, same provider header layering. */
+    private Try<List<SensorDataDTO>> fetchReadings(
+            WindDataProvider<?> provider, String sensorId, int readingWindow, int numberOfReadings) {
         var url = provider.getCallUrl(sensorId);
 
         var request = new HttpGet(url);
@@ -126,7 +192,8 @@ public class ProxyService {
         // Providers may require upstream-specific headers (Windguru answers 401 without a Referer; the 1chip
         // page is HTML and asks for HTML back). They override the defaults above rather than being added
         // next to them, so an upstream never receives two values for the same header. Providers that declare
-        // none are unaffected because their default map is empty.
+        // none are unaffected because their default map is empty. Caching changes nothing here: a fetch that
+        // happens anyway still carries exactly what its provider declares.
         var providerHeaders = provider.requestHeaders(sensorId);
         if (providerHeaders != null) {
             providerHeaders.forEach((headerName, headerValue) -> {
@@ -136,12 +203,59 @@ public class ProxyService {
             });
         }
 
-        var context = new ResponseHandlerContext(
-                mayBeAreaReadingWindow, maybeAreaNumberOfReadings, sensor, url, provider, sensorId);
+        var context = new ResponseHandlerContext(provider, sensorId, url, readingWindow, numberOfReadings);
 
         return Try.of(() -> httpClient.execute(request, response -> handleResponse(context, response)))
-                .flatMap(o -> o)
+                .flatMap(o -> o);
+    }
+
+    /**
+     * Fetch through the single-flight gate, store what a successful fetch parsed, and report the outcome as a cache
+     * miss — nothing was cached when any of the requests that joined this fetch arrived. A failure stores nothing and
+     * reaches the caller as the identical throwable it was before caching, so error statuses and JSON error bodies are
+     * unchanged.
+     */
+    private Try<SensorDataOutcome> fetchAndStore(
+            WindDataProvider<?> provider, String sensorId, int readingWindow, int numberOfReadings, String key) {
+
+        logger.debug("Sensor-data cache miss for {}; fetching from upstream", key);
+
+        var fetched = singleFlight.run(key, upstreamWaitBudget(), () -> {
+            var attempt = fetchReadings(provider, sensorId, readingWindow, numberOfReadings);
+            if (attempt.isSuccess()) {
+                storeQuietly(key, attempt.get());
+            }
+
+            return attempt;
+        });
+
+        return fetched.map(readings -> new SensorDataOutcome(readings, CacheStatus.MISS))
                 .onFailure(e -> logger.error("Failed to get sensor data", e));
+    }
+
+    /** A cache write must never turn a successful provider call into a failed request. */
+    private void storeQuietly(String key, List<SensorDataDTO> readings) {
+        try {
+            var entry = sensorDataCache.store(key, readings);
+
+            logger.debug("Cached {} reading(s) under {} until {}", readings.size(), key, entry.expiresAtEpochMillis());
+        } catch (RuntimeException e) {
+            logger.warn("Could not cache sensor data under {}", key, e);
+        }
+    }
+
+    /**
+     * How long a request that joined another request's fetch may block: every timeout bound the leader's own upstream
+     * call is confined by, plus {@link #UPSTREAM_WAIT_MARGIN_SECONDS}. A smaller budget would make coalescing fail on
+     * exactly the slow calls it exists for; an unbounded one would pin virtual threads on a wedged provider.
+     */
+    private Duration upstreamWaitBudget() {
+        var seconds = windSensorConfig.getUpstreamConnectTimeoutSeconds()
+                + windSensorConfig.getUpstreamResponseTimeoutSeconds()
+                + windSensorConfig.getUpstreamConnectionRequestTimeoutSeconds()
+                + UPSTREAM_WAIT_MARGIN_SECONDS;
+
+        return Duration.ofSeconds(seconds);
     }
 
     private Try<List<SensorDataDTO>> handleResponse(ResponseHandlerContext context, ClassicHttpResponse response)
@@ -154,14 +268,8 @@ public class ProxyService {
 
         var body = entity != null ? EntityUtils.toString(entity, StandardCharsets.UTF_8) : "";
 
-        var readingWindow = context.readingWindow().getOrElse(READING_WINDOW_SECONDS_DEFAULT);
-        var numberOfReadings = context.numberOfReadings().getOrElse(NUMBER_OF_READINGS_DEFAULT);
-
-        // take priority from the sensor meta if exists
-        readingWindow = Option.of(context.sensor().readingWindow()).getOrElse(readingWindow);
-        numberOfReadings = Option.of(context.sensor().numberOfReadings()).getOrElse(numberOfReadings);
-
-        return context.provider().extractTimedReadings(context.sensorId(), body, readingWindow, numberOfReadings);
+        return context.provider()
+                .extractTimedReadings(context.sensorId(), body, context.readingWindow(), context.numberOfReadings());
     }
 
     Try<List<SpotDataDTO>> requestSpotsData(boolean isDebug) {

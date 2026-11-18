@@ -73,6 +73,17 @@ wind-sensor:
   upstream-response-timeout-seconds: ${UPSTREAM_RESPONSE_TIMEOUT_SECONDS:`30`}
   upstream-connection-request-timeout-seconds: ${UPSTREAM_CONNECTION_REQUEST_TIMEOUT_SECONDS:`10`}
 
+  # Response cache for POST /sensor-data. A valid entry answers the request with no upstream call at all; a miss
+  # fetches once, stores what was parsed and reports X-Cache: MISS. Every entry gets its own expiry drawn from
+  # ttl ± floating-window (jitter uniform over [0, window], random sign, never below one second), so refetch
+  # instants are not the fixed interval a periodic poller is fingerprinted by. Failures are never cached; a
+  # successful fetch is, even when it produced no usable readings. Setting enabled to false restores exactly
+  # one upstream call per request without a rebuild.
+  sensor-data-cache:
+    enabled: ${SENSOR_DATA_CACHE_ENABLED:true}
+    ttl: ${CACHE_TTL:`5m`}
+    floating-window: ${CACHE_TTL_FLOATING_WINDOW:`1m`}
+
 ########################################################################################################################
 
 # Caching proxy for OpenStreetMap slippy-map tiles (OSM tile usage policy compliance).
@@ -114,3 +125,10 @@ ehcache:
         max-entries: 50
       disk:
         max-size: 2Gb
+    # Sensor responses cached in front of POST /sensor-data. Heap tier only and deliberately no disk tier: an
+    # entry lives for minutes, so persisting it would risk serving a reading that survived a restart, and the
+    # key space is one entry per sensor per window/count — nothing here needs 1Gb of history. Nothing is
+    # written under ehcache.storage-path for this cache.
+    sensor-data-cache:
+      heap:
+        max-entries: 200
