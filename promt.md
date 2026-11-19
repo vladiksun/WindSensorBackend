@@ -10,6 +10,11 @@ archive without sync
 
 ########################################################################################################################
 /opsx:propose
+Analyze [summary.md](_temp/rate_limit_analyze/summary.md) and apply proposed solution to [WindguruDataProvider.java](src/main/java/com/vb/wingfoil/provider/impl/WindguruDataProvider.java)
+Rename WindguruDataProvider to WindguruSimpleHttpClientDataProvider
+
+########################################################################################################################
+/opsx:propose
 Now the call to @Post("/sensor-data") on server returns an error but it is not wrapped in a proper http code.
 In logs i see
 ```adlanguage
@@ -68,10 +73,7 @@ All temporary files must be removed after you finished.
 On this host machine strictly work in folder [_temp](D:\development\Projects\GIT_MY\WindSensorBackend\_temp) - temp files and results.
 
 Connect via ssh.
-IP: 89.46.42.210
-Port: 3084
-Login: root
-Password: D8yhhG6!Ddk
+
 
 ########################################################################################################################
 /opsx:propose
