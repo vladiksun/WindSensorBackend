@@ -338,7 +338,11 @@ class WindguruSimpleHttpClientDataProviderTest {
         }
     }
 
-    /** The mint is a JSON request of its own with no session attached to it — see docs/windguru_api_rate_limit.md. */
+    /**
+     * The mint is a JSON request of its own with no session attached to it, and it names the upstream site as its
+     * referring page — see docs/windguru_api_rate_limit.md. That last part is load-bearing: live probes on 2026-11-19
+     * got {@code 401} from {@code q=token_refresh} for this exact request with the Referer removed.
+     */
     @Test
     void aTokenMintIsAskedForJsonAndCarriesNoCookieSession() throws Exception {
         try (var upstream = new TokenEndpointStub(1800);
@@ -349,6 +353,26 @@ class WindguruSimpleHttpClientDataProviderTest {
             var headers = upstream.lastTokenRequestHeaders();
             assertEquals(List.of("application/json"), headers.get("Accept"), "the token action is asked for JSON");
             assertTrue(headers.keySet().stream().noneMatch("Cookie"::equalsIgnoreCase), "no cookie session is sent");
+            assertEquals(
+                    List.of("http://127.0.0.1:" + upstream.port() + "/"),
+                    headers.get("Referer"),
+                    "the mint refers to a page of the site it is asked for its token from");
+        }
+    }
+
+    /** The Referer the token action is told about is the origin of the configured endpoint, not a hardcoded host. */
+    @Test
+    void tokenRefererIsTheSiteRootOfTheConfiguredTokenEndpoint() throws Exception {
+        // The bean assembled from application.yml points at the live site, so its mint names that site's root —
+        // derived from configuration, and without anything being fetched here.
+        assertEquals("https://www.windguru.cz/", provider.tokenReferer());
+
+        try (var upstream = new TokenEndpointStub(1800);
+                var stubBacked = providerBackedBy(upstream, Clock.fixed(TOKEN_START, ZoneOffset.UTC))) {
+            assertEquals(
+                    "http://127.0.0.1:" + upstream.port() + "/",
+                    stubBacked.tokenReferer(),
+                    "a provider aimed at a loopback stub refers to that stub rather than to windguru.cz");
         }
     }
 

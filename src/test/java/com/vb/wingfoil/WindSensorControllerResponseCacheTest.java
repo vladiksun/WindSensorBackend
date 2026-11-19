@@ -290,10 +290,10 @@ class WindSensorControllerResponseCacheTest implements TestPropertyProvider {
     }
 
     /**
-     * A Windguru fetch through the real provider: the token action is asked for JSON with no cookie attached, the
-     * station call carries the token that action handed out, and an identical request is then answered from the
-     * response cache. A different window misses that cache and fetches station data again while reusing the same
-     * still-valid token, because the token has its own lifetime rather than one per request.
+     * A Windguru fetch through the real provider: the token action is asked for JSON with a same-origin Referer and no
+     * cookie attached, the station call carries the token that action handed out, and an identical request is then
+     * answered from the response cache. A different window misses that cache and fetches station data again while
+     * reusing the same still-valid token, because the token has its own lifetime rather than one per request.
      */
     @Test
     void aWindguruAnswerIsCachedWhileItsMintedTokenCarriesEveryStationCall(RequestSpecification spec) {
@@ -310,6 +310,10 @@ class WindSensorControllerResponseCacheTest implements TestPropertyProvider {
         var tokenHeaders = upstream.headersFor(tokenPath);
         assertEquals(List.of("application/json"), tokenHeaders.get("Accept"), "the token action is asked for JSON");
         assertTrue(tokenHeaders.keySet().stream().noneMatch("Cookie"::equalsIgnoreCase), "no cookie session is kept");
+        assertEquals(
+                List.of(upstream.baseUrl() + "/"),
+                tokenHeaders.get("Referer"),
+                "token_refresh answers 401 to a mint that names no page of the site it is asked from");
 
         var stationHeaders = upstream.headersFor(stationPath);
         assertFalse(stationHeaders.getOrDefault("X-WG-Token", List.of()).isEmpty(), "the station call carried a token");

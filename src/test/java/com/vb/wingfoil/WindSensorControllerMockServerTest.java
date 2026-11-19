@@ -856,13 +856,17 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
      * Windguru answers {@code station_data} only for a call carrying a token minted from this action, so every windguru
      * stub has to answer it as well. The value is fixed rather than rotating: the provider caches one token for the
      * whole class, and an expectation that demands a header has to demand the one that was actually minted.
+     * The mint itself is only answered when it names a page of the site, because live Windguru answers {@code 401} to
+     * {@code q=token_refresh} without a {@code Referer} — see docs/windguru_api_rate_limit.md.
      */
     private void stubWindguruTokenRefresh() {
         mockServerClient
                 .when(request()
                         .withMethod("GET")
                         .withPath(WINDGURU_TOKEN_PATH)
-                        .withQueryStringParameter("q", "token_refresh"))
+                        .withQueryStringParameter("q", "token_refresh")
+                        .withHeader("Accept", "application/json")
+                        .withHeader("Referer", mockServerContainer.getEndpoint() + "/"))
                 .respond(response()
                         .withStatusCode(200)
                         .withHeaders(new Header("Content-Type", "application/json; charset=utf-8"))

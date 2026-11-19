@@ -36,6 +36,15 @@
 - [x] 6.3 Run Spotless (`./gradlew -q spotlessCheck`; if it fails run `./gradlew -q spotlessApply` then re-run check) and compile main/test sources (`./gradlew -q compileJava` and `./gradlew -q compileTestJava`); verify both pass.
 - [x] 6.4 Run OpenSpec validation for this change (`openspec validate "fix-windguru-token-request-headers" --strict`) and verify it reports no spec delta or artifact issues.
 
+## 7. Production defect found after deployment (2026-11-19)
+
+- [x] 7.1 Reproduce the deployed failure from its own container logs: every Windguru poll failed with `AppException: Windguru authentication unavailable`, caused by `java.io.IOException: Windguru token endpoint answered HTTP 401 for https://www.windguru.cz/int/iapi.php?q=token_refresh` — the sanitized `502` path of task 4.1 working as designed, with the real status kept in the logs.
+- [x] 7.2 Probe that exact URL from the production egress (`89.46.42.210`), cookie-less, varying one header at a time: with **no** `Referer` it answered `401 {"return":"error","message":"Unauthorized!"}` for both a curl User-Agent and `Apache-HttpClient/5.4 (Java/21)`; with `Referer: https://www.windguru.cz/station/15693`, or with the site root `Referer: https://www.windguru.cz/`, it answered `200` carrying `data.token` and `ttl: 1800` even as `Apache-HttpClient/5.3.1 (Java/21)`. The User-Agent is therefore not the discriminator, and the mint was missing exactly one header.
+- [x] 7.3 Confirm the host is not blocked and that no browser is required: `GET https://www.windguru.cz/station/15693` → `200`, 46 697 bytes, title `Windguru station - Dahab - Assalah, Dahab - Assala 2`, no captcha or block markers; `station_data` with the minted token plus `Referer` → `200` full payload on the Java client User-Agent; the same token reused for a second `station_data` call three seconds later → `200`; a Java-minted token replayed by a browser-shaped client, and the reverse → `200`. Playwright/HtmlUnit would add nothing here.
+- [x] 7.4 Send a referring header on the mint itself, derived from the configured endpoint's own origin (`tokenReferer()`): `https://www.windguru.cz/` in production, the loopback stub's own root in tests, so no host is hardcoded and a token stays valid for every station.
+- [x] 7.5 Cover it without live traffic: `aTokenMintIsAskedForJsonAndCarriesNoCookieSession` now asserts the mint's `Referer`; `tokenRefererIsTheSiteRootOfTheConfiguredTokenEndpoint` asserts the derivation for both the configured bean and a stub-backed provider; the response-cache test asserts the mint names `<stub origin>/`; and the MockServer token stub answers only a mint carrying `Accept: application/json` plus that `Referer`.
+- [x] 7.6 Record the finding in `docs/windguru_api_rate_limit.md` (production-outage section and the per-endpoint header list) and in this change's `design.md` and spec delta.
+
 ## Workflow follow-up
 
 - Apply the implementation only after an explicit apply request for this OpenSpec change.

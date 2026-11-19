@@ -30,6 +30,16 @@ The system SHALL obtain a Windguru access token from the upstream token-refresh 
 - **WHEN** the token-refresh action returns a successful token payload over plain HTTP
 - **THEN** the provider uses that returned token for subsequent station-data requests without maintaining a cookie session
 
+#### Scenario: The token request names a page of the upstream site
+
+- **WHEN** the provider calls the token-refresh action
+- **THEN** that request carries a referring header naming a page of the same site the configured endpoint lives on, because the live token action answers `401` to a token request that names no referring page
+
+#### Scenario: The minted token is not bound to the station it was minted for
+
+- **WHEN** a token was minted while referring to one Windguru page and is then sent on `station_data` for a different station id
+- **THEN** the provider still uses that same cached token, because the upstream accepts it for any station
+
 ### Requirement: Mandatory Windguru station-data headers
 
 The system SHALL send both a referring header naming the requested Windguru station page and an `X-WG-Token` header carrying the currently valid Windguru access token on every outbound Windguru `station_data` request.

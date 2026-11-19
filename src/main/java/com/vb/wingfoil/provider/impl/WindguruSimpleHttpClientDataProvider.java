@@ -18,6 +18,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
@@ -61,7 +62,8 @@ import org.slf4j.LoggerFactory;
  *   <li>Windguru answers {@code 401}/{@code 403} for its data endpoints unless the request names a windguru.cz page
  *       as its referring page <em>and</em> carries a self-minted {@code X-WG-Token}. {@link #requestHeaders(String)}
  *       supplies both, minting that token lazily through a small client of its own and reusing it while it is
- *       still valid;</li>
+ *       still valid. The mint itself is one of those referring requests: without a {@code Referer} the token action
+ *       answers {@code 401} too, so no station call could ever be authenticated;</li>
  *   <li>a valid range with no readings comes back as a bare JSON array ({@code []}), and published gaps
  *       appear as {@code null} inside the numeric arrays.</li>
  * </ul>
@@ -323,12 +325,39 @@ public class WindguruSimpleHttpClientDataProvider extends BaseWindyDataProvider<
                 .onFailure(cause -> log.error("Could not obtain a windguru access token from {}", tokenUrl, cause));
     }
 
-    /** One GET against the token action: JSON-only {@code Accept}, no cookies, no redirects, no retries. */
+    /**
+     * One GET against the token action: JSON-only {@code Accept}, a {@code Referer} naming a page of the same site,
+     * and no cookies, redirects or retries. The {@code Referer} is not decoration — probed live on 2026-11-19,
+     * {@code q=token_refresh} answers {@code 401} to the very same request without it, which is what a production
+     * outage came down to.
+     */
     private TokenPayload requestToken() throws IOException, ParseException {
         var request = new HttpGet(tokenUrl);
         request.setHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON);
+        request.setHeader(HttpHeaders.REFERER, tokenReferer());
 
         return tokenHttpClient.execute(request, response -> new TokenPayload(response.getCode(), bodyOf(response)));
+    }
+
+    /**
+     * The referring page the token action is told about: the site root of whichever host the configured
+     * station-data URL points at — {@code https://www.windguru.cz/} in production, the loopback stub's own root in
+     * tests. Probed live on 2026-11-19, any page of that site is accepted and the minted token is bound neither to
+     * the page it was minted for nor to the station it is later used for, so one cached token serves every sensor.
+     */
+    String tokenReferer() {
+        var uri = URI.create(tokenUrl);
+        var scheme = uri.getScheme();
+        var host = uri.getHost();
+
+        if (scheme == null || host == null) {
+            throw new IllegalArgumentException(
+                    "Windguru token URL carries no scheme and host to refer from: " + tokenUrl);
+        }
+
+        var port = uri.getPort() > 0 ? ":" + uri.getPort() : "";
+
+        return scheme + "://" + host + port + "/";
     }
 
     /** Only HTTP 2xx plus a non-blank {@code data.token} counts as a token this provider may use. */

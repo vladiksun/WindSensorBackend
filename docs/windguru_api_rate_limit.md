@@ -49,22 +49,46 @@ The endpoint was probed directly from a residential IP, which Windguru does not 
 |---|---|
 | `GET /int/iapi.php?q=station_data&id_station=15693&...` with a browser `User-Agent`, `Accept`, and `Referer` but no token | `401 {"return":"error","message":"Authentication required"}` |
 | Same request with an arbitrary value in `X-WG-Token` | `403 {"return":"error","message":"forbidden"}` |
-| `GET /int/iapi.php?q=token_refresh` with `Accept: application/json` and no cookies | `200 {"return":0,"message":{"status":"ok","debug":"ok"},"data":{"token":"<64 hex>","ttl":1798}}` |
+| `GET /int/iapi.php?q=token_refresh` with `Accept: application/json`, a windguru.cz `Referer`, and no cookies | `200 {"return":0,"message":{"status":"ok","debug":"ok"},"data":{"token":"<64 hex>","ttl":1798}}` |
 | Station-data request carrying that token in `X-WG-Token` plus the matching `Referer` | `200` with a valid forecast payload: 131 one-minute readings for a two-hour window |
 
 Conclusion: the `401` is not rate limiting. The unofficial endpoint requires a self-minted session token, and every request that omits it either fails outright or contributes to the abusive-traffic pattern behind the multi-day `Retry-After` block measured above. Minting one token per validity window costs one request per roughly 29 minutes, so satisfying this requirement is cheaper than the polling the response cache already removed — it is a prerequisite for any pacing work, not an alternative to it.
 
+### Production outage on 2026-11-19 12:43 — the mint needs a `Referer` too
+
+The deployed build failed every Windguru poll with `AppException: Windguru authentication unavailable`, caused by
+`java.io.IOException: Windguru token endpoint answered HTTP 401 for https://www.windguru.cz/int/iapi.php?q=token_refresh`.
+Probing that exact URL from the production egress (`89.46.42.210`) shows what was missing:
+
+| Request from the production IP | Response |
+|---|---|
+| `q=token_refresh`, `Accept: application/json`, **no `Referer`** — the shape the deployed provider sent | `401 {"return":"error","message":"Unauthorized!"}` |
+| Same with a desktop `User-Agent` instead, still no `Referer` | `401` — the User-Agent is not the discriminator |
+| Same as `Apache-HttpClient/5.3.1 (Java/21)` **plus** `Referer: https://www.windguru.cz/station/15693` | `200`, token minted |
+| Same with `Referer: https://www.windguru.cz/` (site root) | `200`, token minted — the page named does not have to be the station's own |
+| `q=station_data` as `Apache-HttpClient/5.3.1 (Java/21)` with that token and `Referer` | `200`, full payload |
+| The same token reused for a second `q=station_data` 3 s later | `200` — one token serves many calls |
+| A Java-minted token used by a browser-shaped client, and the reverse | `200` both ways — the token is bound to neither the minting client nor the station |
+| `GET https://www.windguru.cz/station/15693` | `200`, 46 697 bytes, title `Windguru station - Dahab - Assalah, Dahab - Assala 2`, no captcha or block markers |
+
+Two conclusions follow. First, the host is not blocked: the page and both API actions answer this IP normally once the
+request is shaped the way the page shapes its own. Second, **no browser is needed** — neither Playwright nor HtmlUnit —
+because a plain Apache HttpClient 5 request with `Accept: application/json`, a same-site `Referer`, and no cookie jar
+gets both the token and the data. The provider therefore sends that `Referer` on the mint as well, derived from the
+configured endpoint's own origin so a test stub is referred to by its own root.
+
 ### Required request headers
 
-The endpoint accepts station data only when the request carries both:
+Both access actions require a referring page; only `station_data` additionally requires the token:
 
-- `Referer: https://www.windguru.cz/<station id>`
-- `X-WG-Token: <token from a preceding token_refresh call>`
+- `Referer: https://www.windguru.cz/<station id>` on `q=station_data`, and any page of the same site (the site root
+  suffices) on `q=token_refresh`
+- `X-WG-Token: <token from a preceding token_refresh call>` on `q=station_data`
 
 `fix-windguru-token-request-headers` implements this inside `WindguruSimpleHttpClientDataProvider`:
 
 - The token endpoint is derived from the configured station-data URL rather than hardcoded: the string before the first `?`, with the station-id placeholder removed, plus exactly `?q=token_refresh`. That keeps one configuration knob and lets tests point the same rule at a local stub.
-- The mint call is its own Apache HttpClient5 request with `Accept: application/json`, no cookies or session state, and no automatic retries.
+- The mint call is its own Apache HttpClient5 request with `Accept: application/json`, a `Referer` naming the configured endpoint's own site root, no cookies or session state, and no automatic retries. Without that `Referer` the token action answers `401` — the outage above.
 - The token is cached for its advertised TTL minus a 60-second safety margin, capped at 900 seconds (the observed `ttl` of 1798 therefore caches for 900 seconds), floored at 1 second, and defaults to 900 seconds when the response carries no usable `ttl`. Concurrent requests mint at most one token.
 - A request that cannot obtain a valid token is reported as a sanitized `502` before any station-data call is issued, so a token failure never spends an upstream request that would only be answered `403`.
 

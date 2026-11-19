@@ -10,6 +10,40 @@ update memory bank
 
 
 ########################################################################################################################
+I see error
+```adlanguage
+12:44:25.369 [virtual-executor--1889268487] ERROR com.vb.wingfoil.ProxyService - Failed to get sensor data
+com.vb.wingfoil.AppException: Windguru authentication unavailable
+	at com.vb.wingfoil.provider.impl.WindguruSimpleHttpClientDataProvider.lambda$currentValidToken$1(WindguruSimpleHttpClientDataProvider.java:307)
+	at io.vavr.control.Try.getOrElseThrow(Try.java:747)
+	at com.vb.wingfoil.provider.impl.WindguruSimpleHttpClientDataProvider.currentValidToken(WindguruSimpleHttpClientDataProvider.java:306)
+	at com.vb.wingfoil.provider.impl.WindguruSimpleHttpClientDataProvider.requestHeaders(WindguruSimpleHttpClientDataProvider.java:171)
+	at com.vb.wingfoil.ProxyService.lambda$fetchReadings$b1f57c5$1(ProxyService.java:205)
+	at io.vavr.control.Try.of(Try.java:74)
+	at com.vb.wingfoil.ProxyService.fetchReadings(ProxyService.java:193)
+	at com.vb.wingfoil.ProxyService.lambda$fetchAndStore$0(ProxyService.java:233)
+	at com.vb.wingfoil.cache.SensorDataSingleFlight.run(SensorDataSingleFlight.java:52)
+	at com.vb.wingfoil.ProxyService.fetchAndStore(ProxyService.java:232)
+	at com.vb.wingfoil.ProxyService.requestTimedReadings(ProxyService.java:172)
+	at com.vb.wingfoil.WindSensorController.getSensorData(WindSensorController.java:23)
+	at com.vb.wingfoil.$WindSensorController$Definition$Exec.dispatch(Unknown Source)
+	at io.micronaut.context.AbstractExecutableMethodsDefinition$DispatchedExecutableMethod.invokeUnsafe(AbstractExecutableMethodsDefinition.java:463)
+```
+Investigate the issue.
+We are tried to simulate the browser behavior.
+I need to understand if it is even possible to mimic the browser at all via http client - probably it is better to use
+playwrigth or https://htmlunit.sourceforge.io/webclient.html#Imitating_a_specific_browser
+In [summary.md](_temp/rate_limit_analyze/summary.md) we used playwright docker container - the real browser.
+For winguru use https://www.windguru.cz/station/15693 to check if it is available and not blocked.
+
+On server strictly work in folder /home/_temp folder - create if needed.
+All temporary files must be removed after you finished.
+On this host machine strictly work in folder [_temp](D:\development\Projects\GIT_MY\WindSensorBackend\_temp) - temp files and results.
+
+Connect via ssh.
+
+
+########################################################################################################################
 /opsx:propose
 Analyze [summary.md](_temp/rate_limit_analyze/summary.md) and apply proposed solution to [WindguruDataProvider.java](src/main/java/com/vb/wingfoil/provider/impl/WindguruDataProvider.java)
 Rename WindguruDataProvider to WindguruSimpleHttpClientDataProvider

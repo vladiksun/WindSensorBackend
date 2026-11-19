@@ -8,6 +8,7 @@ See `proposal.md` — Why for motivation. The current implementation is:
 - `ProxyService` owns the main upstream Apache HttpClient5 call, sets `Accept: application/json`, then lets a provider's `requestHeaders(sensorId)` override default headers.
 - `/sensor-data` already has a heap-only floating-TTL response cache and per-key single-flight coalescing. Failures are not cached.
 - The 2026-11-19 egress evidence shows that the current station-data URL now requires both `Referer` and `X-WG-Token`. A cookie-less plain HTTP request to `https://www.windguru.cz/int/iapi.php?q=token_refresh` can mint a token with advertised `ttl: 1800`.
+- The same day's production outage showed the token action itself is one of those referring requests: from the production egress, `q=token_refresh` answered `401 {"return":"error","message":"Unauthorized!"}` for `Accept: application/json` with no `Referer`, whatever `User-Agent` was sent, and `200` with a token as soon as any page of windguru.cz was named — including the site root. The station page `15693` itself answered `200` with live data, so nothing about this host is blocked and no browser (Playwright, HtmlUnit) is required.
 
 This change restores the existing unofficial Windguru provider from the production egress IP while preserving the public `/sensor-data` contract. It does not introduce the official authenticated Windguru API v1 or a general rate-limit governor.
 
@@ -214,9 +215,19 @@ private String currentValidToken() {
 private Try<TokenSnapshot> fetchFreshToken() {
     var request = new HttpGet(tokenUrl);
     request.setHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON);
+    // Live 2026-11-19: q=token_refresh answers 401 without a referring page, whatever the User-Agent is.
+    request.setHeader(HttpHeaders.REFERER, tokenReferer());
 
     return Try.of(() -> tokenHttpClient.execute(request, response -> readAndValidateToken(response)))
             .map(this::toSnapshot);
+}
+
+// The site root of the configured endpoint: https://www.windguru.cz/ in production, the stub's own root in tests.
+private String tokenReferer() {
+    var uri = URI.create(tokenUrl);
+    var port = uri.getPort() > 0 ? ":" + uri.getPort() : "";
+
+    return uri.getScheme() + "://" + uri.getHost() + port + "/";
 }
 ```
 
