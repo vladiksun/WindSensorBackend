@@ -182,31 +182,39 @@ public class ProxyService {
         return Option.of(sensor.numberOfReadings()).getOrElse(requestValue.getOrElse(NUMBER_OF_READINGS_DEFAULT));
     }
 
-    /** The one bounded upstream call, unchanged from before caching: same URL, same provider header layering. */
+    /**
+     * The one bounded upstream call, unchanged from before caching: same URL, same provider header layering. URL
+     * building and header preparation live inside the {@code Try} because a provider may fail while preparing its
+     * headers — Windguru mints an access token there — and such a failure must travel the same mapped failure path
+     * as a transport error instead of escaping this method as a raw exception.
+     */
     private Try<List<SensorDataDTO>> fetchReadings(
             WindDataProvider<?> provider, String sensorId, int readingWindow, int numberOfReadings) {
-        var url = provider.getCallUrl(sensorId);
+        return Try.of(() -> {
+                    var url = provider.getCallUrl(sensorId);
 
-        var request = new HttpGet(url);
-        request.setHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON);
+                    var request = new HttpGet(url);
+                    request.setHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON);
 
-        // Providers may require upstream-specific headers (Windguru answers 401 without a Referer; the 1chip
-        // page is HTML and asks for HTML back). They override the defaults above rather than being added
-        // next to them, so an upstream never receives two values for the same header. Providers that declare
-        // none are unaffected because their default map is empty. Caching changes nothing here: a fetch that
-        // happens anyway still carries exactly what its provider declares.
-        var providerHeaders = provider.requestHeaders(sensorId);
-        if (providerHeaders != null) {
-            providerHeaders.forEach((headerName, headerValue) -> {
-                if (headerName != null && !headerName.isBlank() && headerValue != null) {
-                    request.setHeader(headerName, headerValue);
-                }
-            });
-        }
+                    // Providers may require upstream-specific headers (Windguru answers 401 without a Referer and
+                    // 403 without its self-minted token; the 1chip page is HTML and asks for HTML back). They
+                    // override the defaults above rather than being added next to them, so an upstream never
+                    // receives two values for the same header. Providers that declare none are unaffected because
+                    // their default map is empty. Caching changes nothing here: a fetch that happens anyway still
+                    // carries exactly what its provider declares.
+                    var providerHeaders = provider.requestHeaders(sensorId);
+                    if (providerHeaders != null) {
+                        providerHeaders.forEach((headerName, headerValue) -> {
+                            if (headerName != null && !headerName.isBlank() && headerValue != null) {
+                                request.setHeader(headerName, headerValue);
+                            }
+                        });
+                    }
 
-        var context = new ResponseHandlerContext(provider, sensorId, url, readingWindow, numberOfReadings);
+                    var context = new ResponseHandlerContext(provider, sensorId, url, readingWindow, numberOfReadings);
 
-        return Try.of(() -> httpClient.execute(request, response -> handleResponse(context, response)))
+                    return httpClient.execute(request, response -> handleResponse(context, response));
+                })
                 .flatMap(o -> o);
     }
 

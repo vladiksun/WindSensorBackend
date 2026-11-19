@@ -1,7 +1,7 @@
 # Windguru API rate-limit analysis
 
-Status: research findings for the planned `fix-windguru-upstream-rate-limiting` change.  
-Date: 2026-11-17.  
+Status: research findings behind two changes — the delivered `fix-windguru-token-request-headers` (the headers and self-minted token this endpoint requires) and the still-planned `fix-windguru-upstream-rate-limiting` governor.  
+Dates: 2026-11-17 research, 2026-11-19 live confirmation of the token requirement.  
 Scope: Windguru station-data integration, especially station `15693`.
 
 ## Executive summary
@@ -40,6 +40,35 @@ That `Retry-After` value is approximately:
 ```
 
 This indicates the current production block is not a short request-per-minute limit. It looks like an IP-level bot/anti-abuse cooldown against the unofficial scraping endpoint.
+
+## Live confirmation on 2026-11-19
+
+The endpoint was probed directly from a residential IP, which Windguru does not block, so the result says something about the request itself rather than about this server's IP reputation:
+
+| Request | Response |
+|---|---|
+| `GET /int/iapi.php?q=station_data&id_station=15693&...` with a browser `User-Agent`, `Accept`, and `Referer` but no token | `401 {"return":"error","message":"Authentication required"}` |
+| Same request with an arbitrary value in `X-WG-Token` | `403 {"return":"error","message":"forbidden"}` |
+| `GET /int/iapi.php?q=token_refresh` with `Accept: application/json` and no cookies | `200 {"return":0,"message":{"status":"ok","debug":"ok"},"data":{"token":"<64 hex>","ttl":1798}}` |
+| Station-data request carrying that token in `X-WG-Token` plus the matching `Referer` | `200` with a valid forecast payload: 131 one-minute readings for a two-hour window |
+
+Conclusion: the `401` is not rate limiting. The unofficial endpoint requires a self-minted session token, and every request that omits it either fails outright or contributes to the abusive-traffic pattern behind the multi-day `Retry-After` block measured above. Minting one token per validity window costs one request per roughly 29 minutes, so satisfying this requirement is cheaper than the polling the response cache already removed — it is a prerequisite for any pacing work, not an alternative to it.
+
+### Required request headers
+
+The endpoint accepts station data only when the request carries both:
+
+- `Referer: https://www.windguru.cz/<station id>`
+- `X-WG-Token: <token from a preceding token_refresh call>`
+
+`fix-windguru-token-request-headers` implements this inside `WindguruSimpleHttpClientDataProvider`:
+
+- The token endpoint is derived from the configured station-data URL rather than hardcoded: the string before the first `?`, with the station-id placeholder removed, plus exactly `?q=token_refresh`. That keeps one configuration knob and lets tests point the same rule at a local stub.
+- The mint call is its own Apache HttpClient5 request with `Accept: application/json`, no cookies or session state, and no automatic retries.
+- The token is cached for its advertised TTL minus a 60-second safety margin, capped at 900 seconds (the observed `ttl` of 1798 therefore caches for 900 seconds), floored at 1 second, and defaults to 900 seconds when the response carries no usable `ttl`. Concurrent requests mint at most one token.
+- A request that cannot obtain a valid token is reported as a sanitized `502` before any station-data call is issued, so a token failure never spends an upstream request that would only be answered `403`.
+
+This section describes the current unofficial endpoint. It does not change the recommendation below: the official API v1 remains the sustainable upstream, and the governor/cache work planned for `fix-windguru-upstream-rate-limiting` is still required — a valid token removes the authentication failure, not the need to pace requests.
 
 ## Windguru has two different access surfaces
 
@@ -264,7 +293,7 @@ For this project:
 
 1. Implement governor/cache/coalescing/`Retry-After` handling immediately to stop abusive polling.
 2. Add official Windguru API v1 support as the primary provider for production station data.
-3. Keep the unofficial `iapi.php` endpoint disabled or behind a temporary fallback flag only.
+3. Keep the unofficial `iapi.php` endpoint behind a temporary fallback flag only, and while it remains in use require both headers above plus its self-minted token — which is what `fix-windguru-token-request-headers` now enforces.
 4. Use environment variables for API keys and never commit them.
 5. If WindSensor’s public product is primarily wind-station data, contact Windguru for permission before deploying official API usage publicly.
 

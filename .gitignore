@@ -13,3 +13,5 @@ out/
 .settings
 .classpath
 .factorypath
+/_temp/
+/skills-lock.json

@@ -58,6 +58,27 @@ final class StubUpstreamServer implements AutoCloseable {
 
     private static final String ERROR_PAYLOAD = "{\"status\": \"error\", \"error\": \"no data from provider\"}";
 
+    /** A two-row {@code q=station_data} answer, in the columnar shape Windguru publishes (speeds in knots). */
+    private static final String WINDGURU_PAYLOAD = """
+            {"unixtime": [1793785260, 1793785500], "wind_avg": [23.1, 24.3], "wind_max": [26.0, 28.7],\
+             "wind_min": [20.2, 20.8], "wind_direction": [10.0, 37.0], "return": 0, "temperature": [21.0, 21.5]}""";
+
+    /** The query Windguru's token action is asked for, and the path its derived URL lands on. */
+    private static final String TOKEN_REFRESH_QUERY = "q=token_refresh";
+
+    /** Status and body of a refused {@code token_refresh}, used by the {@code /api/windguru-denied/} family. */
+    private static final int GRANTED_TOKEN_REFRESH_STATUS = 200;
+
+    private static final int REFUSED_TOKEN_REFRESH_STATUS = 503;
+
+    private static final String REFUSED_TOKEN_REFRESH_PAYLOAD = "{\"return\": \"error\", \"message\": \"forbidden\"}";
+
+    /** Live envelope shape: reserved {@code return}, a {@code message}, and the token inside {@code data}. */
+    private static String tokenRefreshPayload(int mint) {
+        return "{\"return\": 0, \"message\": {\"status\": \"ok\", \"debug\": \"ok\"},"
+                + " \"data\": {\"token\": \"stub-windguru-token-" + mint + "\", \"ttl\": 1800}}";
+    }
+
     /** Long enough that a one-second response timeout expires while this handler is still holding the call open. */
     private static final Duration STALLED_RESPONSE_DELAY = Duration.ofSeconds(4);
 
@@ -80,6 +101,8 @@ final class StubUpstreamServer implements AutoCloseable {
         this.server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         this.upstreamHandlers = Executors.newCachedThreadPool();
         server.createContext("/api/windy/", this::handle);
+        server.createContext("/api/windguru/", this::handleWindguru);
+        server.createContext("/api/windguru-denied/", this::handleWindguruWithRefusedToken);
         server.createContext("/api/probe/", this::handle);
         server.setExecutor(upstreamHandlers);
         server.start();
@@ -91,6 +114,16 @@ final class StubUpstreamServer implements AutoCloseable {
 
     String windyUrlTemplate() {
         return baseUrl() + "/api/windy/%s";
+    }
+
+    /** Windguru-shaped template: a query-carrying {@code iapi.php}-style URL with one station-id placeholder. */
+    String windguruUrlTemplate() {
+        return baseUrl() + "/api/windguru/%s?q=station_data&avg_minutes=1";
+    }
+
+    /** Same shape, but its derived token action refuses — so a station call here could only be unauthenticated. */
+    String deniedWindguruUrlTemplate() {
+        return baseUrl() + "/api/windguru-denied/%s?q=station_data&avg_minutes=1";
     }
 
     String probeUrlTemplate() {
@@ -191,6 +224,45 @@ final class StubUpstreamServer implements AutoCloseable {
             }
         }
 
+        respondWithJson(exchange, status, body);
+    }
+
+    /**
+     * Windguru's two upstream faces on one host: the {@code q=token_refresh} action the provider mints its access
+     * token from, and the {@code station_data} call that token unlocks. Both are counted per path — the token action
+     * lands on {@code /api/windguru/}, a station call on {@code /api/windguru/<id>} — so a test can tell a reused
+     * token from a fresh mint instead of inferring it.
+     */
+    private void handleWindguru(HttpExchange exchange) throws IOException {
+        handleWindguru(exchange, GRANTED_TOKEN_REFRESH_STATUS, null);
+    }
+
+    /** Same two faces, but the token action refuses — so any station-data call arriving here is unauthenticated. */
+    private void handleWindguruWithRefusedToken(HttpExchange exchange) throws IOException {
+        handleWindguru(exchange, REFUSED_TOKEN_REFRESH_STATUS, REFUSED_TOKEN_REFRESH_PAYLOAD);
+    }
+
+    private void handleWindguru(HttpExchange exchange, int tokenRefreshStatus, String refusalPayload)
+            throws IOException {
+        var uri = exchange.getRequestURI();
+        var path = uri.getPath();
+
+        var windguruCalls = callCounts.computeIfAbsent(path, ignored -> new AtomicInteger());
+        windguruCalls.incrementAndGet();
+        recordedHeaders.put(path, recordHeaders(exchange));
+
+        if (TOKEN_REFRESH_QUERY.equals(uri.getQuery())) {
+            // The token rotates per mint, which is what makes "the cached token was reused" observable.
+            var payload = refusalPayload != null ? refusalPayload : tokenRefreshPayload(windguruCalls.get());
+            respondWithJson(exchange, tokenRefreshStatus, payload);
+
+            return;
+        }
+
+        respondWithJson(exchange, 200, WINDGURU_PAYLOAD);
+    }
+
+    private static void respondWithJson(HttpExchange exchange, int status, String body) throws IOException {
         var bytes = body.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
         exchange.sendResponseHeaders(status, bytes.length);

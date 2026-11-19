@@ -842,7 +842,36 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
                     }
                     """;
 
+    /**
+     * The station-data URL with its station placeholder removed — which is where Windguru's token action lives, and
+     * what {@code WindguruSimpleHttpClientDataProvider} therefore asks for before any station data.
+     */
+    private static final String WINDGURU_TOKEN_PATH = "/api/windguru/";
+
+    /** Live token-action envelope: the reserved {@code return}, a {@code message} block, and the token inside {@code data}. */
+    private static final String WINDGURU_TOKEN_PAYLOAD = """
+            {"return": 0, "message": {"status": "ok", "debug": "ok"}, "data": {"token": "stub-windguru-token", "ttl": 1800}}""";
+
+    /**
+     * Windguru answers {@code station_data} only for a call carrying a token minted from this action, so every windguru
+     * stub has to answer it as well. The value is fixed rather than rotating: the provider caches one token for the
+     * whole class, and an expectation that demands a header has to demand the one that was actually minted.
+     */
+    private void stubWindguruTokenRefresh() {
+        mockServerClient
+                .when(request()
+                        .withMethod("GET")
+                        .withPath(WINDGURU_TOKEN_PATH)
+                        .withQueryStringParameter("q", "token_refresh"))
+                .respond(response()
+                        .withStatusCode(200)
+                        .withHeaders(new Header("Content-Type", "application/json; charset=utf-8"))
+                        .withBody(new StringBody(WINDGURU_TOKEN_PAYLOAD)));
+    }
+
     private void stubWindguruResponse(String body) {
+        stubWindguruTokenRefresh();
+
         mockServerClient
                 .when(request().withMethod("GET").withPath("/api/windguru/" + WINDGURU_STATION_ID))
                 .respond(response()
@@ -893,14 +922,18 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
     }
 
     @Test
-    void windguruCallCarriesRefererHeader(RequestSpecification spec) {
-        // Windguru answers 401 for iapi.php without a windguru.cz referer, so the expectation demands it:
-        // drop the shared header plumbing or the provider override and nothing matches upstream.
+    void windguruCallCarriesRefererAndMintedToken(RequestSpecification spec) {
+        // Windguru answers 401 for iapi.php without a windguru.cz referer, and again for station_data that carries no
+        // token minted from its token action — so the expectation demands both: drop either one of the provider's
+        // declared headers and nothing upstream matches.
+        stubWindguruTokenRefresh();
+
         mockServerClient
                 .when(request()
                         .withMethod("GET")
                         .withPath("/api/windguru/" + WINDGURU_STATION_ID)
-                        .withHeader("Referer", "https://www.windguru.cz/station/" + WINDGURU_STATION_ID))
+                        .withHeader("Referer", "https://www.windguru.cz/station/" + WINDGURU_STATION_ID)
+                        .withHeader("X-WG-Token", "stub-windguru-token"))
                 .respond(response()
                         .withStatusCode(200)
                         .withHeaders(new Header("Content-Type", "application/json; charset=utf-8"))
@@ -925,7 +958,8 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
                 request()
                         .withMethod("GET")
                         .withPath("/api/windguru/" + WINDGURU_STATION_ID)
-                        .withHeader("Referer", "https://www.windguru.cz/station/" + WINDGURU_STATION_ID),
+                        .withHeader("Referer", "https://www.windguru.cz/station/" + WINDGURU_STATION_ID)
+                        .withHeader("X-WG-Token", "stub-windguru-token"),
                 VerificationTimes.exactly(1));
     }
 
@@ -956,6 +990,10 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
         // The real-world failure mode: Windguru answers 401 when the Referer is missing or rejected — and 403 when it
         // has blocked this host outright. Whatever status the provider chose is what the client is answered with,
         // while the internal call URL (path plus its `?q=station_data` query) stays out of the response body.
+        // The token action has to be answered successfully, or the failure under test would be authentication rather
+        // than the rejected station-data call.
+        stubWindguruTokenRefresh();
+
         mockServerClient
                 .when(request().withMethod("GET").withPath("/api/windguru/" + WINDGURU_STATION_ID))
                 .respond(response().withStatusCode(401));

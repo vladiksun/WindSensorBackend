@@ -71,6 +71,8 @@ class WindSensorControllerResponseCacheTest implements TestPropertyProvider {
                 "WindSensorControllerResponseCacheTest",
                 "wind-sensor.wind-providers.windy.url",
                 upstream.windyUrlTemplate(),
+                "wind-sensor.wind-providers.windguru.url",
+                upstream.windguruUrlTemplate(),
                 "wind-sensor.wind-providers.probe.url",
                 upstream.probeUrlTemplate(),
                 "wind-sensor.sensor-data-cache.enabled",
@@ -285,6 +287,49 @@ class WindSensorControllerResponseCacheTest implements TestPropertyProvider {
         // Exactly one value per header: the provider's own Accept replaces the JSON default instead of adding to it.
         assertEquals(List.of("application/json"), headers.get("Accept"));
         assertEquals(List.of(HeaderProbeProvider.TEST_HEADER_VALUE), headers.get(HeaderProbeProvider.TEST_HEADER_NAME));
+    }
+
+    /**
+     * A Windguru fetch through the real provider: the token action is asked for JSON with no cookie attached, the
+     * station call carries the token that action handed out, and an identical request is then answered from the
+     * response cache. A different window misses that cache and fetches station data again while reusing the same
+     * still-valid token, because the token has its own lifetime rather than one per request.
+     */
+    @Test
+    void aWindguruAnswerIsCachedWhileItsMintedTokenCarriesEveryStationCall(RequestSpecification spec) {
+        var stationId = "57410";
+        var tokenPath = "/api/windguru/";
+        var stationPath = "/api/windguru/" + stationId;
+
+        postSensorData(spec, stationId, "windguru", 86400, 100)
+                .then()
+                .statusCode(200)
+                .header("X-Cache", "MISS")
+                .body("size()", is(2));
+
+        var tokenHeaders = upstream.headersFor(tokenPath);
+        assertEquals(List.of("application/json"), tokenHeaders.get("Accept"), "the token action is asked for JSON");
+        assertTrue(tokenHeaders.keySet().stream().noneMatch("Cookie"::equalsIgnoreCase), "no cookie session is kept");
+
+        var stationHeaders = upstream.headersFor(stationPath);
+        assertFalse(stationHeaders.getOrDefault("X-WG-Token", List.of()).isEmpty(), "the station call carried a token");
+        assertFalse(stationHeaders.getOrDefault("Referer", List.of()).isEmpty(), "and the Referer that authorizes it");
+
+        postSensorData(spec, stationId, "windguru", 86400, 100)
+                .then()
+                .statusCode(200)
+                .header("X-Cache", "HIT");
+
+        assertEquals(1, upstream.callsFor(stationPath), "the cached answer served the identical request");
+        assertEquals(1, upstream.callsFor(tokenPath), "an answer from the cache mints nothing");
+
+        postSensorData(spec, stationId, "windguru", 3600, 5)
+                .then()
+                .statusCode(200)
+                .header("X-Cache", "MISS");
+
+        assertEquals(2, upstream.callsFor(stationPath), "a different window is a different answer, so it was fetched");
+        assertEquals(1, upstream.callsFor(tokenPath), "while the token minted for the first call was still valid");
     }
 
     /**

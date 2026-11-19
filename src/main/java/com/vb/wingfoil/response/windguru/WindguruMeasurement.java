@@ -6,7 +6,7 @@ package com.vb.wingfoil.response.windguru;
  * Micronaut {@code @Serdeable} annotation — same shape as {@code OneChipMeasurement}.
  * <p>
  * Speeds are metres per second: Windguru publishes knots, and the provider converts each speed once
- * while building this record (see {@code WindguruDataProvider#knotsToMetresPerSecond(float)}).
+ * while building this record (see {@code WindguruSimpleHttpClientDataProvider#knotsToMetresPerSecond(float)}).
  *
  * @param min       minimum wind speed in metres per second, converted from Windguru's knots
  * @param avg       average wind speed in metres per second, converted from Windguru's knots
