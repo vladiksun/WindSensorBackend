@@ -133,7 +133,8 @@ public class ProxyService {
      * Cache-first {@code POST /sensor-data}: a valid entry answers the request with no upstream call at all, and a
      * missing or expired entry fetches from the provider, parses it, stores what was parsed, and returns it. Providers
      * are untouched by this — the cache sits in the shared request path, so every registered provider is covered by
-     * the same code, including one added later. Failures store nothing and propagate unchanged.
+     * the same code, including one added later. Failures store nothing, and both request paths report them through the
+     * same mapping ({@link #clientFacing}).
      */
     Try<SensorDataOutcome> requestTimedReadings(
             Option<Integer> mayBeAreaReadingWindow, Option<Integer> maybeAreaNumberOfReadings, SensorDTO sensor) {
@@ -157,7 +158,7 @@ public class ProxyService {
         var numberOfReadings = resolveNumberOfReadings(maybeAreaNumberOfReadings, sensor);
 
         if (!sensorDataCacheProperties.isEnabled()) {
-            return fetchReadings(provider, sensorId, readingWindow, numberOfReadings)
+            return clientFacing(fetchReadings(provider, sensorId, readingWindow, numberOfReadings))
                     .map(readings -> new SensorDataOutcome(readings, CacheStatus.MISS))
                     .onFailure(e -> logger.error("Failed to get sensor data", e));
         }
@@ -211,9 +212,9 @@ public class ProxyService {
 
     /**
      * Fetch through the single-flight gate, store what a successful fetch parsed, and report the outcome as a cache
-     * miss — nothing was cached when any of the requests that joined this fetch arrived. A failure stores nothing and
-     * reaches the caller as the identical throwable it was before caching, so error statuses and JSON error bodies are
-     * unchanged.
+     * miss — nothing was cached when any of the requests that joined this fetch arrived. A failure stores nothing, and
+     * it is mapped once inside the fetch supplier: the shared future completes with the already-mapped failure, so
+     * every request that joined this call receives that identical exception rather than wrapping the raw one itself.
      */
     private Try<SensorDataOutcome> fetchAndStore(
             WindDataProvider<?> provider, String sensorId, int readingWindow, int numberOfReadings, String key) {
@@ -221,7 +222,7 @@ public class ProxyService {
         logger.debug("Sensor-data cache miss for {}; fetching from upstream", key);
 
         var fetched = singleFlight.run(key, upstreamWaitBudget(), () -> {
-            var attempt = fetchReadings(provider, sensorId, readingWindow, numberOfReadings);
+            var attempt = clientFacing(fetchReadings(provider, sensorId, readingWindow, numberOfReadings));
             if (attempt.isSuccess()) {
                 storeQuietly(key, attempt.get());
             }
@@ -229,7 +230,10 @@ public class ProxyService {
             return attempt;
         });
 
-        return fetched.map(readings -> new SensorDataOutcome(readings, CacheStatus.MISS))
+        // A waiter that gave up on someone else's call fails on its own — no upstream status was available for it
+        // either, so it is mapped by the same rule. An already-mapped failure passes through untouched.
+        return clientFacing(fetched)
+                .map(readings -> new SensorDataOutcome(readings, CacheStatus.MISS))
                 .onFailure(e -> logger.error("Failed to get sensor data", e));
     }
 
@@ -258,11 +262,78 @@ public class ProxyService {
         return Duration.ofSeconds(seconds);
     }
 
+    /** Client-safe text for a provider that answered with an HTTP error status; the code itself is the response. */
+    private static final String UPSTREAM_ERROR_MESSAGE = "Sensor data provider returned an error";
+
+    /** Client-safe text for a provider call that never produced an upstream HTTP status. */
+    private static final String UPSTREAM_UNAVAILABLE_MESSAGE = "Sensor data provider is unavailable";
+
+    /**
+     * Map a failed {@link Try} to the failure the client should be given, leaving successes alone:
+     *
+     * <ul>
+     *   <li>an already-mapped application failure passes through unchanged, so one coalesced upstream call produces
+     *       exactly one exception object shared by every request that joined it;
+     *   <li>a provider that answered with an HTTP error status is reported with that same status — a Windguru
+     *       {@code 403} is a {@code 403} for the client too;
+     *   <li>any other {@link IOException} from the provider call — connect failure, response timeout, pool-lease
+     *       timeout, or a waiter that gave up on another request's call — means no upstream status was available and
+     *       is reported as {@code 502 Bad Gateway};
+     *   <li>anything else (a null provider, a blank sensor id, an unknown provider code) is not an upstream failure
+     *       and keeps the behaviour it has always had.
+     * </ul>
+     *
+     * <p>The original failure is preserved as the cause of the mapped one, so the log written from
+     * {@code onFailure} below still shows the full upstream detail — status, URL and stack — that the client-facing
+     * message deliberately leaves out.
+     */
+    private static <T> Try<T> clientFacing(Try<T> attempt) {
+        if (attempt.isSuccess()) {
+            return attempt;
+        }
+
+        return Try.failure(clientFacingCause(attempt.getCause()));
+    }
+
+    private static Throwable clientFacingCause(Throwable failure) {
+        if (failure instanceof AppException alreadyMapped) {
+            return alreadyMapped;
+        }
+        if (failure instanceof UpstreamErrorResponseException upstreamError) {
+            return new AppException(upstreamError.upstreamStatus(), UPSTREAM_ERROR_MESSAGE, upstreamError);
+        }
+        if (failure instanceof IOException transportFailure) {
+            return new AppException(HttpStatus.SC_BAD_GATEWAY, UPSTREAM_UNAVAILABLE_MESSAGE, transportFailure);
+        }
+
+        return failure;
+    }
+
+    /**
+     * A provider that answered with an HTTP error status. The numeric status travels with it because that number —
+     * not a generic server error — is what the client has to be told, while this message keeps the full internal URL
+     * for server-side diagnosis: it becomes the cause of the {@link AppException}, never the response body.
+     */
+    static final class UpstreamErrorResponseException extends IOException {
+
+        private final int upstreamStatus;
+
+        UpstreamErrorResponseException(int upstreamStatus, String url) {
+            super("Upstream call failed with status " + upstreamStatus + " for " + url);
+            this.upstreamStatus = upstreamStatus;
+        }
+
+        /** The status the provider itself returned. */
+        int upstreamStatus() {
+            return upstreamStatus;
+        }
+    }
+
     private Try<List<SensorDataDTO>> handleResponse(ResponseHandlerContext context, ClassicHttpResponse response)
             throws IOException, ParseException {
         int status = response.getCode();
         if (status < HttpStatus.SC_OK || status >= HttpStatus.SC_REDIRECTION) {
-            throw new IOException("Upstream call failed with status " + status + " for " + context.url());
+            throw new UpstreamErrorResponseException(status, context.url());
         }
         var entity = response.getEntity();
 

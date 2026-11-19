@@ -1,8 +1,9 @@
 package com.vb.wingfoil;
 
-import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.vb.wingfoil.WindSensorConfig.WindDataProviderConfig;
@@ -144,30 +145,51 @@ class WindSensorControllerResponseCacheTest implements TestPropertyProvider {
     void aFailedProviderCallIsNotCachedSoTheNextIdenticalRequestCallsTheProviderAgain(RequestSpecification spec) {
         var key = SensorDataResponseCache.cacheKey("windy", StubUpstreamServer.UNAVAILABLE_SENSOR_ID, 3600, 5);
 
-        postSensorData(spec, StubUpstreamServer.UNAVAILABLE_SENSOR_ID, "windy", 3600, 5)
-                .then()
-                .statusCode(500)
-                .body("message", containsString("Upstream call failed with status 503"));
+        // The provider answered 503, so the client is answered 503 — not a generic 500 whose body recites the
+        // internal fetch URL.
+        var refused = postSensorData(spec, StubUpstreamServer.UNAVAILABLE_SENSOR_ID, "windy", 3600, 5);
+        refused.then().statusCode(503);
+        assertSanitizedFailureMessage(refused);
 
         assertTrue(responseCache.lookup(key).isEmpty(), "a failure stores nothing that a later request could reuse");
         assertEquals(1, upstream.callsFor("/api/windy/unavailable"));
 
-        postSensorData(spec, StubUpstreamServer.UNAVAILABLE_SENSOR_ID, "windy", 3600, 5)
-                .then()
-                .statusCode(500)
-                .body("message", containsString("Upstream call failed with status 503"));
+        var refusedAgain = postSensorData(spec, StubUpstreamServer.UNAVAILABLE_SENSOR_ID, "windy", 3600, 5);
+        refusedAgain.then().statusCode(503);
+        assertSanitizedFailureMessage(refusedAgain);
 
         assertEquals(2, upstream.callsFor("/api/windy/unavailable"), "an error is never remembered as an answer");
+    }
+
+    @Test
+    void aForbiddenProviderCallIsAnsweredAsForbiddenAndNeverCached(RequestSpecification spec) {
+        var key = SensorDataResponseCache.cacheKey("windy", StubUpstreamServer.FORBIDDEN_SENSOR_ID, 3600, 5);
+
+        // A provider that has blocked this host answers 403; the client is told exactly that, because "the provider
+        // refused us" and "our backend broke" are different facts an operator cannot tell apart from a 500.
+        var forbidden = postSensorData(spec, StubUpstreamServer.FORBIDDEN_SENSOR_ID, "windy", 3600, 5);
+        forbidden.then().statusCode(403);
+        assertSanitizedFailureMessage(forbidden);
+
+        assertTrue(responseCache.lookup(key).isEmpty(), "a refusal stores nothing");
+        assertEquals(1, upstream.callsFor("/api/windy/forbidden"));
+
+        postSensorData(spec, StubUpstreamServer.FORBIDDEN_SENSOR_ID, "windy", 3600, 5)
+                .then()
+                .statusCode(403);
+
+        assertEquals(2, upstream.callsFor("/api/windy/forbidden"), "the next identical request reaches upstream again");
     }
 
     @Test
     void anUpstreamThatAcceptsTheConnectionAndThenStallsIsNotCached(RequestSpecification spec) {
         var key = SensorDataResponseCache.cacheKey("windy", StubUpstreamServer.STALLED_SENSOR_ID, 3600, 5);
 
-        // The stub holds the response for four seconds while this context bounds a response at one second.
+        // The stub holds the response for four seconds while this context bounds a response at one second. No upstream
+        // status was ever available, so the client is told 502 Bad Gateway rather than a generic 500.
         postSensorData(spec, StubUpstreamServer.STALLED_SENSOR_ID, "windy", 3600, 5)
                 .then()
-                .statusCode(500);
+                .statusCode(502);
 
         assertTrue(responseCache.lookup(key).isEmpty(), "a timed-out call stores nothing");
         assertEquals(1, upstream.callsFor("/api/windy/stalled"));
@@ -179,7 +201,7 @@ class WindSensorControllerResponseCacheTest implements TestPropertyProvider {
 
         postSensorData(spec, StubUpstreamServer.STALLED_SENSOR_ID, "windy", 3600, 5)
                 .then()
-                .statusCode(500);
+                .statusCode(502);
 
         assertTrue(responseCache.lookup(key).isEmpty(), "a timeout left nothing behind to answer from");
         assertTrue(
@@ -263,6 +285,22 @@ class WindSensorControllerResponseCacheTest implements TestPropertyProvider {
         // Exactly one value per header: the provider's own Accept replaces the JSON default instead of adding to it.
         assertEquals(List.of("application/json"), headers.get("Accept"));
         assertEquals(List.of(HeaderProbeProvider.TEST_HEADER_VALUE), headers.get(HeaderProbeProvider.TEST_HEADER_NAME));
+    }
+
+    /**
+     * The client-facing error text of a failed {@code /sensor-data} call: one short generic sentence, and none of the
+     * internal request details — no provider host, no path, no query string, no recital of the upstream call. Those
+     * belong to the server logs, where they travel as the cause of the failure rather than as its message.
+     */
+    private static void assertSanitizedFailureMessage(Response response) {
+        var message = response.jsonPath().getString("message");
+
+        assertNotNull(message, "the failure has to name a cause");
+        assertTrue(message.length() <= 60, "a short description, not internal detail: " + message);
+        assertFalse(message.contains("127.0.0.1"), "no provider host in the client body: " + message);
+        assertFalse(message.contains("/api/windy/"), "no provider path in the client body: " + message);
+        assertFalse(message.contains("?"), "no query string in the client body: " + message);
+        assertFalse(message.contains("Upstream call failed"), "no internal fetch text in the client body: " + message);
     }
 
     private static Response postSensorData(

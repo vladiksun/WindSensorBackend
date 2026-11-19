@@ -93,10 +93,13 @@ class WindSensorControllerUpstreamTimeoutTest implements TestPropertyProvider {
         var elapsed = Duration.between(started, Instant.now());
 
         // An upstream error, not the compatible "no data" payload: the client must not pretend a stalled
-        // endpoint simply had nothing to say.
-        response.then().statusCode(500);
+        // endpoint simply had nothing to say. No upstream status was ever received, so this is a gateway failure —
+        // 502 — and the body says only that the provider is unavailable.
+        response.then().statusCode(502);
         var message = response.jsonPath().getString("message");
         assertNotNull(message, "the failure has to name a cause");
+        assertFalse(message.contains("127.0.0.1"), "no provider host in the client body: " + message);
+        assertFalse(message.contains("windt.php"), "no provider path in the client body: " + message);
         assertTrue(elapsed.toSeconds() < 20, "the call must end within its bounds, not hang: " + elapsed);
 
         System.out.println("UPSTREAM TIMEOUT probe: status=" + response.statusCode() + " message=" + message

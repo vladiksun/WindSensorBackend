@@ -1,7 +1,6 @@
 package com.vb.wingfoil;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.mockserver.model.HttpRequest.request;
@@ -791,11 +790,12 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
                 .when(request().withMethod("GET").withPath("/api/onechip/" + ONECHIP_SENSOR_ID))
                 .respond(response().withStatusCode(503));
 
-        // "No data to render" is a 200 with the zero reading; a refusal keeps failing as an upstream error.
+        // "No data to render" is a 200 with the zero reading; a refusal keeps failing as an upstream error, and the
+        // provider's own 503 is what the client is answered with — with no internal fetch URL in the body.
         postOnechipRequest(spec, 3600, 5)
                 .then()
-                .statusCode(500)
-                .body("message", containsString("Upstream call failed with status 503"));
+                .statusCode(503)
+                .body("message", is("Sensor data provider returned an error"));
 
         verifyMockServerRequest("GET", "/api/onechip/" + ONECHIP_SENSOR_ID, 1);
     }
@@ -953,16 +953,17 @@ class WindSensorControllerMockServerTest implements TestPropertyProvider {
 
     @Test
     void windguruUpstreamFailureIsReported(RequestSpecification spec) {
-        // The real-world failure mode: Windguru answers 401 when the Referer is missing or rejected.
+        // The real-world failure mode: Windguru answers 401 when the Referer is missing or rejected — and 403 when it
+        // has blocked this host outright. Whatever status the provider chose is what the client is answered with,
+        // while the internal call URL (path plus its `?q=station_data` query) stays out of the response body.
         mockServerClient
                 .when(request().withMethod("GET").withPath("/api/windguru/" + WINDGURU_STATION_ID))
                 .respond(response().withStatusCode(401));
 
-        // Existing behaviour for any provider whose upstream fails: 500 carrying the upstream-cause message.
         postWindguruRequest(spec, 3600, 5)
                 .then()
-                .statusCode(500)
-                .body("message", containsString("Upstream call failed with status 401"));
+                .statusCode(401)
+                .body("message", is("Sensor data provider returned an error"));
 
         verifyMockServerRequest("GET", "/api/windguru/" + WINDGURU_STATION_ID, 1);
     }

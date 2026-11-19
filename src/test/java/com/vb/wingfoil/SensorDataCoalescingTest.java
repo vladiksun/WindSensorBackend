@@ -1,7 +1,10 @@
 package com.vb.wingfoil;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.vb.wingfoil.cache.CacheStatus;
@@ -216,5 +219,61 @@ class SensorDataCoalescingTest implements TestPropertyProvider {
                             .isEmpty(),
                     "and nothing was stored from it");
         }
+    }
+
+    /**
+     * What that shared failure actually is: the mapped application failure — carrying the status the provider itself
+     * answered with and a client-safe message — rather than the raw upstream exception, and one identical instance for
+     * every request that joined the call. The original upstream failure survives as its cause, which is what keeps the
+     * server-side diagnosis (status, URL, stack) available even though the client sees neither.
+     */
+    @Test
+    void aCoalescedFailureCarriesTheMappedStatusAndKeepsTheOriginalUpstreamCause() throws Exception {
+        var outcomes = runConcurrently(
+                4,
+                () -> proxyService.requestTimedReadings(
+                        Option.none(), Option.none(), sensor(StubUpstreamServer.UNAVAILABLE_SENSOR_ID, null, null)));
+
+        assertEquals(1, upstream.callsFor("/api/windy/unavailable"), "one upstream call, one mapped failure");
+
+        AppException shared = null;
+        for (var outcome : outcomes) {
+            assertTrue(outcome.isFailure(), "every joined request fails");
+            assertInstanceOf(AppException.class, outcome.getCause());
+
+            var failure = (AppException) outcome.getCause();
+            assertEquals(503, failure.statusCode(), "the provider's own status is what every request reports");
+            assertEquals("Sensor data provider returned an error", failure.getMessage());
+            assertFalse(failure.getMessage().contains("127.0.0.1"), "no provider host in the client-facing message");
+
+            var originalCause = failure.getCause();
+            assertInstanceOf(IOException.class, originalCause, "the upstream failure is preserved as the cause");
+            assertTrue(
+                    originalCause.getMessage().contains("status 503"),
+                    "and it still names what happened upstream: " + originalCause.getMessage());
+
+            if (shared == null) {
+                shared = failure;
+            } else {
+                assertSame(shared, failure, "coalesced waiters are handed the very same exception");
+            }
+        }
+    }
+
+    /** A refusal is an upstream status too: it maps to 403 rather than to a gateway failure. */
+    @Test
+    void aForbiddenUpstreamAnswerMapsToForbiddenAndNotToBadGateway() {
+        var outcome = proxyService.requestTimedReadings(
+                Option.none(), Option.none(), sensor(StubUpstreamServer.FORBIDDEN_SENSOR_ID, null, null));
+
+        assertTrue(outcome.isFailure());
+        assertInstanceOf(AppException.class, outcome.getCause());
+
+        var failure = (AppException) outcome.getCause();
+        assertEquals(403, failure.statusCode());
+        assertTrue(responseCache
+                .lookup(SensorDataResponseCache.cacheKey("windy", StubUpstreamServer.FORBIDDEN_SENSOR_ID, 3600, 5))
+                .isEmpty());
+        assertInstanceOf(IOException.class, failure.getCause(), "the provider's refusal stays the cause");
     }
 }

@@ -28,6 +28,9 @@ final class StubUpstreamServer implements AutoCloseable {
     /** Sensor id that answers 503. */
     static final String UNAVAILABLE_SENSOR_ID = "unavailable";
 
+    /** Sensor id that answers 403 — what a provider that has blocked this host (Windguru does) replies with. */
+    static final String FORBIDDEN_SENSOR_ID = "forbidden";
+
     /** Sensor id that answers a successful payload holding no readings. */
     static final String EMPTY_SENSOR_ID = "empty";
 
@@ -167,6 +170,10 @@ final class StubUpstreamServer implements AutoCloseable {
         switch (sensorId) {
             case UNAVAILABLE_SENSOR_ID -> {
                 status = 503;
+                body = ERROR_PAYLOAD;
+            }
+            case FORBIDDEN_SENSOR_ID -> {
+                status = 403;
                 body = ERROR_PAYLOAD;
             }
             case EMPTY_SENSOR_ID -> {

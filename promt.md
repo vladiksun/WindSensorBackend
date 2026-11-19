@@ -10,6 +10,71 @@ archive without sync
 
 ########################################################################################################################
 /opsx:propose
+Now the call to @Post("/sensor-data") on server returns an error but it is not wrapped in a proper http code.
+In logs i see
+```adlanguage
+09:54:36.139 [virtual-executor-1617744998] ERROR com.vb.wingfoil.ProxyService - Failed to get sensor data
+java.io.IOException: Upstream call failed with status 403 for https://www.windguru.cz/int/iapi.php?q=station_data&id_station=15693&avg_minutes=1&graph_info=1&from=2026-11-18T09:54:36Z&to=2026-11-19T09:54:36Z
+	at com.vb.wingfoil.ProxyService.handleResponse(ProxyService.java:265)
+	at com.vb.wingfoil.ProxyService.lambda$fetchReadings$1(ProxyService.java:208)
+	at org.apache.hc.client5.http.impl.classic.CloseableHttpClient.execute(CloseableHttpClient.java:247)
+	at org.apache.hc.client5.http.impl.classic.CloseableHttpClient.execute(CloseableHttpClient.java:188)
+	at org.apache.hc.client5.http.impl.classic.CloseableHttpClient.execute(CloseableHttpClient.java:162)
+	at com.vb.wingfoil.ProxyService.lambda$fetchReadings$7a5b4ce2$1(ProxyService.java:208)
+	at io.vavr.control.Try.of(Try.java:74)
+	at com.vb.wingfoil.ProxyService.fetchReadings(ProxyService.java:208)
+	at com.vb.wingfoil.ProxyService.lambda$fetchAndStore$0(ProxyService.java:224)
+	at com.vb.wingfoil.cache.SensorDataSingleFlight.run(SensorDataSingleFlight.java:52)
+	at com.vb.wingfoil.ProxyService.fetchAndStore(ProxyService.java:223)
+	at com.vb.wingfoil.ProxyService.requestTimedReadings(ProxyService.java:171)
+	at com.vb.wingfoil.WindSensorController.getSensorData(WindSensorController.java:23)
+	at com.vb.wingfoil.$WindSensorController$Definition$Exec.dispatch(Unknown Source)
+```
+So upstream 403 must be propogated as 403 also in
+
+```adlanguage
+var outcome = proxyService
+                .requestTimedReadings(
+                        Option.of(sensorRequest.readingWindow()),
+                        Option.of(sensorRequest.numberOfReadings()),
+                        sensorRequest.sensor())
+                .get();
+```
+We need to refactor com.vb.wingfoil.ProxyService.fetchAndStore so on any upstream error we explicitly wrap the java.io.IOException
+to our own exception - AppException that will be mapped to Try.fail().
+The AppException must contain http status from upstream so it can be mapped as is in com.vb.wingfoil.GlobalExceptionHandler.
+Now the client see the whole message like
+```adlanguage
+Upstream call failed with status 403 for https://www.windguru.cz/int/iapi.php?q=station_data&id_station=15693&avg_minutes=1&graph_info=1&from=2026-11-18T09:54:36Z&to=2026-11-19T09:54:36Z
+```
+The client in the message must not see details - only the status code and short description.
+The service layer in com.vb.wingfoil.ProxyService.fetchAndStore must translate java.io.IOException to our AppException and change the message.
+But original exection must still be logged.
+In our AppException the original exceptiom must be a cause exception.
+
+
+
+########################################################################################################################
+
+I need to check if onechip and windguru will not egress or apply rate limit if used via real web browser thar runs on the server.
+Connect to server, use playwright to simulate real web browser.
+Preferably use playwright docker container.
+For winguru use https://www.windguru.cz/station/15693 to check if it is available and not blocked.
+For onechip use https://1chip.ru/windt.php?id=0264 to check if it is available and not empty.
+Record screenshots and download them into [_temp](D:\development\Projects\GIT_MY\WindSensorBackend\_temp) folder
+
+On server strictly work in folder /home/_temp folder - create if needed.
+All temporary files must be removed after you finished.
+On this host machine strictly work in folder [_temp](D:\development\Projects\GIT_MY\WindSensorBackend\_temp) - temp files and results.
+
+Connect via ssh.
+IP: 89.46.42.210
+Port: 3084
+Login: root
+Password: D8yhhG6!Ddk
+
+########################################################################################################################
+/opsx:propose
 For REST call  @Post("/sensor-data") I need to apply a cache with configurable TTL - default every 5 minutes.
 TTL must be floating (dynamic) +- CACHE_TTL_FLOATING_WINDOW.
 Default value for CACHE_TTL_FLOATING_WINDOW = 1 minute window - random value between 0 and 1 minute.
